@@ -68,4 +68,42 @@ class DeltaConsentGuardTest {
             dir.deleteRecursively()
         }
     }
+
+    // ---- Index0: overnight toggle -----------------------------------------------
+
+    private fun readyModel(dir: File): File {
+        val graph = File(dir, "model_quantized.onnx").apply { writeBytes(ByteArray(1)) }
+        File(dir, "model_quantized.onnx_data").writeBytes(ByteArray(1))
+        File(dir, "tokenizer.json").writeBytes(ByteArray(1))
+        return graph
+    }
+
+    @Test
+    fun `overnight off means the periodic job is not enqueued even when ready`() {
+        val dir = Files.createTempDirectory("delta-guard-overnight-off").toFile()
+        try {
+            val graph = readyModel(dir)
+            val enqueued = mutableListOf<String>()
+            BootReceiver.enqueuePeriodicIfAllowed(false, graph.absolutePath, firstIndexDone = true) { enqueued += it }
+            assertEquals(emptyList<String>(), enqueued)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `overnight on with model ready and first index done enqueues the periodic job`() {
+        val dir = Files.createTempDirectory("delta-guard-overnight-on").toFile()
+        try {
+            val graph = readyModel(dir)
+            val enqueued = mutableListOf<String>()
+            BootReceiver.enqueuePeriodicIfAllowed(true, graph.absolutePath, firstIndexDone = true) { enqueued += it }
+            assertEquals(listOf(graph.absolutePath), enqueued)
+            enqueued.clear()
+            BootReceiver.enqueuePeriodicIfAllowed(true, graph.absolutePath, firstIndexDone = false) { enqueued += it }
+            assertEquals(emptyList<String>(), enqueued)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 }
