@@ -92,7 +92,9 @@ class MediaStoreEnumerator {
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.DATE_MODIFIED
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
+            // Index0: file path for the excluded-folders rule.
+            MediaStore.Files.FileColumns.DATA
         )
 
         // Build the MIME-type IN clause.
@@ -113,6 +115,7 @@ class MediaStoreEnumerator {
         }
 
         val results = mutableListOf<IndexTarget>()
+        val userExcluded = ExcludedFolders.userFolders(context)
 
         context.contentResolver.query(
             collection,
@@ -124,8 +127,11 @@ class MediaStoreEnumerator {
             val idCol       = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val mimeCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
             val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+            val dataCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
 
             while (cursor.moveToNext()) {
+                val path = cursor.getString(dataCol)
+                if (path != null && ExcludedFolders.isExcluded(path, userExcluded)) continue
                 val id           = cursor.getLong(idCol)
                 val mimeType     = cursor.getString(mimeCol)
                 val lastModified = cursor.getLong(modifiedCol) // seconds, not millis - do NOT convert
@@ -167,7 +173,9 @@ class MediaStoreEnumerator {
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.DATE_MODIFIED
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
+            // Index0: file path for the excluded-folders rule.
+            MediaStore.Files.FileColumns.DATA
         )
 
         val mimeList = IMAGE_MIME_TYPES.toList()
@@ -186,6 +194,7 @@ class MediaStoreEnumerator {
         }
 
         val results = mutableListOf<IndexTarget>()
+        val userExcluded = ExcludedFolders.userFolders(context)
 
         context.contentResolver.query(
             collection,
@@ -197,8 +206,11 @@ class MediaStoreEnumerator {
             val idCol       = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val mimeCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
             val modifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+            val dataCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
 
             while (cursor.moveToNext()) {
+                val path = cursor.getString(dataCol)
+                if (path != null && ExcludedFolders.isExcluded(path, userExcluded)) continue
                 val id           = cursor.getLong(idCol)
                 val mimeType     = cursor.getString(mimeCol)
                 val lastModified = cursor.getLong(modifiedCol) // seconds, not millis - do NOT convert
