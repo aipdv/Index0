@@ -332,6 +332,10 @@ internal class IndexingViewModel(
 }
 
 private suspend fun loadIndexingData(context: Context): IndexingData = withContext(Dispatchers.IO) {
+    // Index0: reading status must not create the index file before the user starts indexing.
+    if (!context.getDatabasePath(IndexDatabase.DB_NAME).exists()) {
+        return@withContext IndexingData(events = emptyList(), photoCount = 0, documentCount = 0)
+    }
     val db = IndexDatabase(context)
     try {
         val repo = IndexRepository(db)
