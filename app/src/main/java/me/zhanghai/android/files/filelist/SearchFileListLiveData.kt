@@ -9,6 +9,7 @@ import android.os.AsyncTask
 import java8.nio.file.Path
 import me.zhanghai.android.files.file.FileItem
 import me.zhanghai.android.files.file.loadFileItem
+import me.zhanghai.android.files.index.SemanticSearch
 import me.zhanghai.android.files.provider.common.search
 import me.zhanghai.android.files.util.CloseableLiveData
 import me.zhanghai.android.files.util.Failure
@@ -36,8 +37,30 @@ class SearchFileListLiveData(
         future = (AsyncTask.THREAD_POOL_EXECUTOR as ExecutorService).submit<Unit> {
             val fileList = mutableListOf<FileItem>()
             try {
+                // Index0: meaning matches first, then name matches. A file in both shows once.
+                val semanticPaths = SemanticSearch.search(path, query)
+                for (semanticPath in semanticPaths) {
+                    fileList.add(
+                        try {
+                            semanticPath.loadFileItem()
+                        } catch (e: IOException) {
+                            // Stale index row (file moved or deleted).
+                            continue
+                        }
+                    )
+                }
+                if (Thread.interrupted()) {
+                    return@submit
+                }
+                if (fileList.isNotEmpty()) {
+                    postValue(Loading(fileList.toList()))
+                }
+                val semanticPathSet = semanticPaths.toSet()
                 path.search(query, INTERVAL_MILLIS) { paths: List<Path> ->
                     for (path in paths) {
+                        if (path in semanticPathSet) {
+                            continue
+                        }
                         val fileItem = try {
                             path.loadFileItem()
                         } catch (e: IOException) {
