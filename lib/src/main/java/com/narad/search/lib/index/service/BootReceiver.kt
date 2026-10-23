@@ -57,6 +57,37 @@ class BootReceiver : BroadcastReceiver() {
             if (modelFilesReady(modelPath) && firstIndexDone) enqueue(modelPath)
         }
 
+        // Index0: user toggle for the overnight job, stored with the other engine flags.
+        private const val LIB_PREFS = "narad_lib_prefs"
+        private const val KEY_OVERNIGHT_ENABLED = "overnight_enabled"
+
+        fun isOvernightEnabled(context: Context): Boolean =
+            context.getSharedPreferences(LIB_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_OVERNIGHT_ENABLED, true)
+
+        fun setOvernightEnabled(context: Context, enabled: Boolean) {
+            context.getSharedPreferences(LIB_PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(KEY_OVERNIGHT_ENABLED, enabled).apply()
+            if (enabled) {
+                enqueuePeriodicDeltaWork(context)
+            } else {
+                WorkManager.getInstance(context).cancelUniqueWork(DELTA_WORK_NAME)
+            }
+        }
+
+        /**
+         * Index0: the overnight toggle guard. Start, every finished run and boot all enqueue
+         * the periodic job through [enqueuePeriodicDeltaWork], so this one check holds for all.
+         */
+        internal inline fun enqueuePeriodicIfAllowed(
+            overnightEnabled: Boolean,
+            modelPath: String,
+            firstIndexDone: Boolean,
+            enqueue: (String) -> Unit,
+        ) {
+            if (overnightEnabled) enqueueIfModelReady(modelPath, firstIndexDone, enqueue)
+        }
+
         /**
          * Enqueue (or replace) the periodic delta work.
          *
@@ -77,7 +108,11 @@ class BootReceiver : BroadcastReceiver() {
             val constraints = overnightConstraints()
 
             // Default model path, the same path used by IndexService
-            enqueueIfModelReady(IndexService.getDefaultModelPath(context), IndexService.isFirstIndexDone(context)) { modelPath ->
+            enqueuePeriodicIfAllowed(
+                isOvernightEnabled(context),
+                IndexService.getDefaultModelPath(context),
+                IndexService.isFirstIndexDone(context)
+            ) { modelPath ->
                 val request = PeriodicWorkRequestBuilder<IndexWorker>(1, TimeUnit.HOURS)
                     .setConstraints(constraints)
                     .setInputData(workDataOf(IndexWorker.KEY_MODEL_PATH to modelPath))
