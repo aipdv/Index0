@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import com.narad.search.lib.index.enumeration.ExcludedFolders
+import com.narad.search.lib.index.provision.ProvisionState
 import java8.nio.file.Path
 import java8.nio.file.Paths
 import kotlinx.coroutines.CancellationException
@@ -24,6 +25,8 @@ object SemanticSearch {
     fun search(folder: Path, query: String): List<Path> {
         val scope = if (folder.isLinuxPath) folder.toString() else null
         if (semanticScope(scope) == null || query.isBlank()) return emptyList()
+        // No model yet: do not touch the engine (it would create an empty index file).
+        if (IndexEngine.provisioner.stateFlow.value != ProvisionState.Ready) return emptyList()
         return try {
             val output = runBlocking { IndexEngine.searchController.search(query, TOP_K) }
             val uris = output.docs.filter { it.strong }.map { it.filePath } +
