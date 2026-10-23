@@ -55,3 +55,7 @@
 
 # SMBJ-RPC
 -dontwarn java.rmi.UnmarshalException
+
+# Index0: WorkManager (used by the :lib indexer) creates its Room database by reflection
+# (Class.forName("...WorkDatabase_Impl")). R8 removed it in release and the app crashed at start.
+-keep class androidx.work.impl.WorkDatabase_Impl { <init>(); }
