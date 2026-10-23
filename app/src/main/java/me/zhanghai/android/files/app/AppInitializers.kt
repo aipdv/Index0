@@ -14,6 +14,7 @@ import me.zhanghai.android.files.coil.initializeCoil
 import me.zhanghai.android.files.filejob.fileJobNotificationTemplate
 import me.zhanghai.android.files.ftpserver.ftpServerServiceNotificationTemplate
 import me.zhanghai.android.files.hiddenapi.HiddenApi
+import me.zhanghai.android.files.index.IndexEngine
 import me.zhanghai.android.files.provider.FileSystemProviders
 import me.zhanghai.android.files.settings.Settings
 import me.zhanghai.android.files.storage.FtpServerAuthenticator
@@ -39,13 +40,18 @@ val appInitializers = listOf(
     ::initializeLiveDataObjects,
     ::initializeCustomTheme,
     ::initializeNightMode,
-    ::createNotificationChannels
+    ::createNotificationChannels,
+    ::initializeIndexEngine
 )
 
 private fun initializeFirebase() {
 //#ifdef NONFREE
     me.zhanghai.android.files.nonfree.FirebaseInitializer.initialize()
 //#endif
+}
+
+private fun initializeIndexEngine() {
+    IndexEngine.initialize()
 }
 
 private fun disableHiddenApiChecks() {
