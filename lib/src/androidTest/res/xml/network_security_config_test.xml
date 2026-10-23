@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Test-only network security config.
+    Allows cleartext (HTTP) traffic to localhost for MockWebServer in instrumented tests.
+    This file is ONLY bundled in the test APK (androidTest sourceSet),
+    NOT in production release builds.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

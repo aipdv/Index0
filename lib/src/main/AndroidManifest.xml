@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Manifest for the :lib Android library module.
+    The namespace is declared in lib/build.gradle.kts (namespace = "com.narad.search.lib").
+
+    U4: :lib hosts IndexService (foreground dataSync service) and BootReceiver
+    so they merge into :app's final manifest automatically via AGP manifest merge.
+    All permissions remain in :app/AndroidManifest.xml - not duplicated here.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+
+        <!--
+            Privacy: the onnxruntime-android AAR registers a ContentProvider that starts ORT
+            telemetry at every process start (loads libonnxruntime.so and posts the Android ID
+            over HTTP). Narad is on-device only, so the provider is removed from the merged manifest.
+        -->
+        <provider
+            android:name="ai.onnxruntime.TelemetryInitializer"
+            android:authorities="${applicationId}.onnxruntime_telemetry_initializer"
+            tools:node="remove" />
+
+        <!--
+            IndexService - foreground service for initial index build + MediaStore watching.
+            Type: dataSync (required for Android 14+ per KTD-8).
+            Not exported - started only via explicit Intent from :app (Settings screen).
+        -->
+        <service
+            android:name=".index.service.IndexService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!--
+            BootReceiver - re-enqueues the periodic delta WorkManager job after reboot.
+            Exported: true (system must be able to deliver BOOT_COMPLETED broadcast).
+            Permission guard is the RECEIVE_BOOT_COMPLETED permission in :app manifest.
+        -->
+        <receiver
+            android:name=".index.service.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>
