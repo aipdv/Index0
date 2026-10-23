@@ -253,6 +253,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Index0: indexing status and settings. -->
+        <activity
+            android:name="me.zhanghai.android.files.index.IndexingActivity"
+            android:exported="false"
+            android:label="@string/indexing_title"
+            android:theme="@style/Theme.MaterialFiles" />
+
         <activity
             android:name="me.zhanghai.android.files.settings.SettingsActivity"
             android:exported="true"
