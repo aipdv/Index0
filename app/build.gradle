@@ -15,14 +15,14 @@ android {
     compileSdkMinor = 2
     ndkVersion '30.0.16248370'
     defaultConfig {
-        applicationId 'me.zhanghai.android.files'
+        applicationId 'com.aipdv.index0'
         // Index0: the Narad engine (:lib) needs Android 10+ (API 29).
         minSdk 29
         // Not supporting the ACCESS_LOCAL_NETWORK runtime permission yet.
         //noinspection OldTargetApi
         targetSdk 36
         versionCode 40
-        versionName '1.7.5'
+        versionName '0.1.0'
         // Index0: EmbeddingGemma 2 base URL (pinned Hugging Face revision, same as Narad).
         buildConfigField 'String', 'MODEL_BASE_URL', '"https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0/"'
         resValue 'string', 'app_version', versionName + ' (' + versionCode + ')'
