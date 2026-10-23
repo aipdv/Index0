@@ -135,7 +135,10 @@ internal fun photoAccess(
     mediaImages: Boolean,
     userSelected: Boolean,
     readExternal: Boolean,
+    // Index0: All files access (API 30+) lists every image in MediaStore, so it is FULL.
+    manager: Boolean = false,
 ): PhotoAccess = when {
+    sdk >= android.os.Build.VERSION_CODES.R && manager -> PhotoAccess.FULL
     sdk >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
         if (mediaImages) PhotoAccess.FULL else if (userSelected) PhotoAccess.PARTIAL else PhotoAccess.NONE
     sdk >= android.os.Build.VERSION_CODES.TIRAMISU ->
@@ -891,6 +894,8 @@ class IndexWorker @JvmOverloads constructor(
             userSelected = sdk >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
                 ctx.checkSelfPermission(android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == pm,
             readExternal = ctx.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == pm,
+            manager      = sdk >= android.os.Build.VERSION_CODES.R &&
+                android.os.Environment.isExternalStorageManager(),
         )
     }
 
