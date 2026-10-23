@@ -56,6 +56,9 @@
 # SMBJ-RPC
 -dontwarn java.rmi.UnmarshalException
 
-# Index0: WorkManager (used by the :lib indexer) creates its Room database by reflection
-# (Class.forName("...WorkDatabase_Impl")). R8 removed it in release and the app crashed at start.
+# Index0: WorkManager 2.9 (used by the :lib indexer) creates these by reflection. Its bundled
+# rules (`-keep class * extends ...` with no members) do not keep constructors under R8 full
+# mode (AGP 9 default), so release crashed at start (WorkDatabase_Impl) and indexing never ran
+# (OverwritingInputMerger). Drop these when WorkManager ships full-mode rules.
 -keep class androidx.work.impl.WorkDatabase_Impl { <init>(); }
+-keep class * extends androidx.work.InputMerger { <init>(); }
