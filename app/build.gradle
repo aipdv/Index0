@@ -31,7 +31,8 @@ android {
     ndkVersion '30.0.16248370'
     defaultConfig {
         applicationId 'me.zhanghai.android.files'
-        minSdk 23
+        // Index0: the Narad engine (:lib) needs Android 10+ (API 29).
+        minSdk 29
         // Not supporting the ACCESS_LOCAL_NETWORK runtime permission yet.
         //noinspection OldTargetApi
         targetSdk 36
@@ -41,6 +42,10 @@ android {
         buildConfigField 'String', 'FILE_PROVIDIER_AUTHORITY', 'APPLICATION_ID + ".file_provider"'
         resValue 'string', 'app_provider_authority', applicationId + '.app_provider'
         resValue 'string', 'file_provider_authority', applicationId + '.file_provider'
+        // Index0: ONNX Runtime and the tokenizer ship only these ABIs in :lib.
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
         externalNativeBuild {
             cmake {
                 arguments '-DANDROID_STL=none'
@@ -122,6 +127,9 @@ dependencies {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // Index0: on-device indexing and semantic search engine (from Narad).
+    implementation project(':lib')
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
