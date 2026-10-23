@@ -93,4 +93,25 @@ class PruneGateTest {
         assertTrue(shouldPruneDocuments(true, true, true))
         assertFalse(shouldPrunePhotos(PhotoAccess.PARTIAL, PhotoAccess.PARTIAL, true))
     }
+
+    // ---- Index0: All files access ---------------------------------------------
+
+    @Test
+    fun `all files access reads as full photo access on api 30 and later with no media grant`() {
+        for (sdk in listOf(30, 33, 34, 36)) {
+            assertEquals(
+                "sdk=$sdk",
+                PhotoAccess.FULL,
+                photoAccess(sdk, mediaImages = false, userSelected = false, readExternal = false, manager = true)
+            )
+        }
+    }
+
+    @Test
+    fun `all files access is ignored on api 29`() {
+        assertEquals(
+            PhotoAccess.NONE,
+            photoAccess(29, mediaImages = false, userSelected = false, readExternal = false, manager = true)
+        )
+    }
 }
