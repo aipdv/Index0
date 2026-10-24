@@ -90,7 +90,7 @@ class VectorStoreTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `load 50k 256-dim vectors completes under 15 seconds and search is correct`() {
+    fun `load 50k 256-dim vectors completes under 1500 ms and search is correct`() {
         val dim = 256 // EmbeddingModel.DIM
         val count = 50_000
         val rng = java.util.Random(42L)
@@ -106,8 +106,8 @@ class VectorStoreTest {
         println("VectorStore: 50k 256-dim inserts took ${elapsedMs}ms")
 
         assertTrue(
-            "50k inserts must complete in < 15 s (took ${elapsedMs}ms)",
-            elapsedMs < 15_000L
+            "50k inserts must complete in < 1.5 s (took ${elapsedMs}ms; the old O(n^2) load took about 2.7 s)",
+            elapsedMs < 1_500L
         )
         assertEquals("Size must be 50k after 50k unique adds", count, store.size)
 
