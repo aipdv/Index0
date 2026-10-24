@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.zhanghai.android.files.BuildConfig
+import me.zhanghai.android.files.app.Analytics
 import me.zhanghai.android.files.app.application
 
 internal const val FOREGROUND_DELTA_MIN_GAP_MS = 2 * 60 * 1000L
@@ -90,8 +91,10 @@ object IndexEngine {
     private fun provisionThenIndex() {
         if (!isTermsAccepted) return
         scope.launch {
+            Analytics.capture("model_download_started")
             provisioner.provision(application, BuildConfig.MODEL_BASE_URL)
             val textReady = provisioner.stateFlow.value == ProvisionState.Ready
+            Analytics.capture(if (textReady) "model_download_completed" else "model_download_failed")
             val imagesOn = withContext(Dispatchers.IO) {
                 DeviceTierDetector.detect(application).imageEmbeddingEnabled
             }
