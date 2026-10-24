@@ -27,6 +27,7 @@ import me.zhanghai.android.files.util.getQuantityString
 import me.zhanghai.android.files.util.layoutInflater
 import me.zhanghai.android.files.util.putArgs
 import me.zhanghai.android.files.util.show
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.viewModels
 
 class PermissionListDialogFragment : AppCompatDialogFragment() {
@@ -73,7 +74,7 @@ class PermissionListDialogFragment : AppCompatDialogFragment() {
             is Failure -> {
                 binding.progress.fadeOutUnsafe()
                 binding.errorText.fadeInUnsafe()
-                binding.errorText.text = stateful.throwable.toString()
+                binding.errorText.text = stateful.throwable.toUiText()
                 binding.emptyView.fadeOutUnsafe()
                 adapter.clear()
             }
