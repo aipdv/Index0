@@ -34,8 +34,6 @@ internal const val FOREGROUND_DELTA_MIN_GAP_MS = 2 * 60 * 1000L
 internal fun shouldRunForegroundDelta(lastFinishedAt: Long, now: Long): Boolean =
     lastFinishedAt <= 0L || lastFinishedAt > now || now - lastFinishedAt >= FOREGROUND_DELTA_MIN_GAP_MS
 
-internal const val GEMMA_TERMS_URL = "https://ai.google.dev/gemma/terms"
-
 /** App-wide wiring of the Narad engine (port of NaradApplication). */
 object IndexEngine {
     private const val TAG = "IndexEngine"
