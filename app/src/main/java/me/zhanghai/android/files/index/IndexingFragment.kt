@@ -18,6 +18,7 @@ import com.narad.search.lib.index.service.BootReceiver
 import com.narad.search.lib.index.worker.IndexStage
 import kotlinx.coroutines.launch
 import me.zhanghai.android.files.R
+import me.zhanghai.android.files.app.Analytics
 import me.zhanghai.android.files.filelist.FileListActivity
 import me.zhanghai.android.files.ui.PreferenceFragmentCompat
 import me.zhanghai.android.files.util.setSpanClickable
@@ -61,13 +62,22 @@ class IndexingFragment : PreferenceFragmentCompat() {
         startPreference = Preference(context).apply {
             setTitle(R.string.indexing_start_title)
             isIconSpaceReserved = false
-            setOnPreferenceClickListener { IndexEngine.startIndexing(); true }
+            setOnPreferenceClickListener {
+                IndexEngine.startIndexing()
+                Analytics.capture("indexing_started")
+                true
+            }
         }
         reindexPreference = Preference(context).apply {
             setTitle(R.string.indexing_reindex_title)
             setSummary(R.string.indexing_reindex_summary)
             isIconSpaceReserved = false
-            setOnPreferenceClickListener { IndexEngine.reindexAll(); true }
+            setOnPreferenceClickListener {
+                if (IndexEngine.reindexAll()) {
+                    Analytics.capture("reindex_started")
+                }
+                true
+            }
         }
         val overnightPreference = SwitchPreferenceCompat(context).apply {
             setTitle(R.string.indexing_overnight_title)
@@ -77,6 +87,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
             isChecked = BootReceiver.isOvernightEnabled(context)
             setOnPreferenceChangeListener { _, newValue ->
                 BootReceiver.setOvernightEnabled(context, newValue as Boolean)
+                Analytics.capture("overnight_indexing_toggled", mapOf("enabled" to newValue))
                 true
             }
         }
