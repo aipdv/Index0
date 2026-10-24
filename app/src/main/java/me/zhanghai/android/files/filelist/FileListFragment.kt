@@ -82,6 +82,7 @@ import me.zhanghai.android.files.navigation.NavigationRootMapLiveData
 import me.zhanghai.android.files.provider.archive.createArchiveRootPath
 import me.zhanghai.android.files.provider.archive.isArchivePath
 import me.zhanghai.android.files.provider.linux.isLinuxPath
+import me.zhanghai.android.files.provider.remote.RemoteFileSystemException
 import me.zhanghai.android.files.settings.Settings
 import me.zhanghai.android.files.terminal.Terminal
 import me.zhanghai.android.files.ui.AppBarLayoutExpandHackListener
@@ -601,7 +602,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         val throwable = (stateful as? Failure)?.throwable
         if (throwable != null) {
             throwable.printStackTrace()
-            val error = throwable.toString()
+            val error = throwable.toErrorText()
             if (hasFiles) {
                 showToast(error)
             } else {
@@ -618,6 +619,21 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         if (stateful is Success) {
             viewModel.pendingState?.let { layoutManager.onRestoreInstanceState(it) }
         }
+    }
+
+    // Index0: plain text instead of Throwable.toString(), which shows the package name.
+    private fun Throwable.toErrorText(): String {
+        // ponytail: matches the message text in LibSuFileServiceLauncher. Update it if that text
+        // changes, or throw a dedicated exception class there.
+        val isRootUnavailable = generateSequence(this) { it.cause }.any {
+            it is RemoteFileSystemException && it.message == "Root isn't available"
+        }
+        if (isRootUnavailable) {
+            return getString(R.string.file_list_error_root_unavailable)
+        }
+        val name = javaClass.simpleName
+        val message = localizedMessage
+        return if (message.isNullOrBlank()) name else "$name: $message"
     }
 
     private fun getSubtitle(files: List<FileItem>): String {
