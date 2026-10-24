@@ -40,6 +40,7 @@ import me.zhanghai.android.files.util.putArgs
 import me.zhanghai.android.files.util.putState
 import me.zhanghai.android.files.util.readParcelable
 import me.zhanghai.android.files.util.showToast
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.viewModels
 
 class FileJobErrorDialogFragment : AppCompatDialogFragment() {
@@ -101,7 +102,7 @@ class FileJobErrorDialogFragment : AppCompatDialogFragment() {
             is ActionState.Error -> {
                 val throwable = state.throwable
                 throwable.printStackTrace()
-                showToast(throwable.toString())
+                showToast(throwable.toUiText())
                 viewModel.finishRemounting()
             }
         }
