@@ -1,10 +1,10 @@
 package me.zhanghai.android.files.index
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.text.format.DateUtils
+import android.widget.TextView
+import androidx.core.text.parseAsHtml
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 import me.zhanghai.android.files.R
 import me.zhanghai.android.files.filelist.FileListActivity
 import me.zhanghai.android.files.ui.PreferenceFragmentCompat
-import me.zhanghai.android.files.util.startActivitySafe
+import me.zhanghai.android.files.util.setSpanClickable
 import me.zhanghai.android.files.util.viewModels
 
 /** Index0: indexing status, model download, overnight toggle and excluded folders. */
@@ -161,15 +161,13 @@ class IndexingFragment : PreferenceFragmentCompat() {
 
     // The only path to the model download: the Gemma terms are on screen first.
     private fun showTermsDialog() {
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.indexing_terms_title)
-            .setMessage(R.string.indexing_terms_message)
+            .setMessage(getString(R.string.indexing_terms_message).parseAsHtml())
             .setPositiveButton(R.string.indexing_terms_accept) { _, _ -> IndexEngine.acceptTermsAndProvision() }
-            .setNeutralButton(R.string.indexing_terms_link) { _, _ ->
-                startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(GEMMA_TERMS_URL)))
-            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+        dialog.findViewById<TextView>(android.R.id.message)?.setSpanClickable()
     }
 
     private fun bindExcludedFolders() {
