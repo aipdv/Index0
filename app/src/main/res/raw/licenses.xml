@@ -244,4 +244,74 @@
         <copyright>Copyright 2003 The Apache Software Foundation</copyright>
         <license>Apache Software License 2.0</license>
     </notice>
+
+    <notice>
+        <name>ONNX Runtime</name>
+        <url>https://github.com/microsoft/onnxruntime</url>
+        <copyright>Copyright 2018 Microsoft Corporation</copyright>
+        <license>MIT License</license>
+    </notice>
+
+    <notice>
+        <name>DJL</name>
+        <url>https://github.com/deepjavalibrary/djl</url>
+        <copyright>Copyright 2019 Amazon.com, Inc. or its affiliates</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>Hugging Face Tokenizers</name>
+        <url>https://github.com/huggingface/tokenizers</url>
+        <copyright>Copyright 2019 Hugging Face</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>PdfBox-Android</name>
+        <url>https://github.com/TomRoush/PdfBox-Android</url>
+        <copyright>Copyright 2014 The Apache Software Foundation, Copyright 2016 Tom Roush</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>JNA</name>
+        <url>https://github.com/java-native-access/jna</url>
+        <copyright>Copyright 2007 Timothy Wall and the JNA contributors</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>Gson</name>
+        <url>https://github.com/google/gson</url>
+        <copyright>Copyright 2008 Google Inc.</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>Apache Commons Compress</name>
+        <url>https://commons.apache.org/proper/commons-compress/</url>
+        <copyright>Copyright 2002 The Apache Software Foundation</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>Apache Commons IO</name>
+        <url>https://commons.apache.org/proper/commons-io/</url>
+        <copyright>Copyright 2002 The Apache Software Foundation</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>Apache Commons Codec</name>
+        <url>https://commons.apache.org/proper/commons-codec/</url>
+        <copyright>Copyright 2002 The Apache Software Foundation</copyright>
+        <license>Apache Software License 2.0</license>
+    </notice>
+
+    <notice>
+        <name>SLF4J</name>
+        <url>https://www.slf4j.org</url>
+        <copyright>Copyright 2004 QOS.ch</copyright>
+        <license>MIT License</license>
+    </notice>
 </notices>
