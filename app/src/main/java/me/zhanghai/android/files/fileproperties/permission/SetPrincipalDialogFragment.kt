@@ -31,6 +31,7 @@ import me.zhanghai.android.files.util.fadeInUnsafe
 import me.zhanghai.android.files.util.fadeOutUnsafe
 import me.zhanghai.android.files.util.fadeToVisibilityUnsafe
 import me.zhanghai.android.files.util.layoutInflater
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.valueCompat
 
 abstract class SetPrincipalDialogFragment : AppCompatDialogFragment() {
@@ -90,7 +91,7 @@ abstract class SetPrincipalDialogFragment : AppCompatDialogFragment() {
             is Failure -> {
                 binding.progress.fadeOutUnsafe()
                 binding.errorText.fadeInUnsafe()
-                binding.errorText.text = stateful.throwable.toString()
+                binding.errorText.text = stateful.throwable.toUiText()
                 binding.emptyView.fadeOutUnsafe()
                 adapter.clear()
             }
