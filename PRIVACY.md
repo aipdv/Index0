@@ -6,7 +6,7 @@ Index0 is a file manager with on-device search. It has no account and no servers
 
 ## Who runs Index0
 
-Index0 is made by aipdv, an individual developer. To contact us, open an issue on the project's GitHub page.
+Index0 is made and run by Prabhudayal Vaishnav (aipdv), an individual developer. He is the data controller for the analytics described below. For privacy questions or requests, email legal@aipdv.com.
 
 ## Summary
 
@@ -67,7 +67,7 @@ Analytics events are deleted after 30 days.
 ### Your choices and rights
 
 - **Turn it off:** Settings > Privacy. Index0 stops recording events and replaces the anonymous ID, so later use cannot be linked to earlier events. Events recorded just before you turned it off may still be sent in the next batch.
-- **Access or deletion:** The data has no name or account attached, and Index0 does not show the ID, so we usually cannot find your events. Open an issue if you have a question, and we will help where we can.
+- **Access or deletion:** The data has no name or account attached, and Index0 does not show the ID, so we usually cannot find your events. Email legal@aipdv.com if you have a question, and we will help where we can.
 - You can also complain to your data protection authority.
 
 ## Network use
@@ -95,4 +95,4 @@ When this policy changes, we update the date at the top and mention the change i
 
 ## Contact
 
-Open an issue on the project's GitHub page.
+Privacy questions and requests: legal@aipdv.com. For bugs and feature requests, open an issue on the project's GitHub page.
