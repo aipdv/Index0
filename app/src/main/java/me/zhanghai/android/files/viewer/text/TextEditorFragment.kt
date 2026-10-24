@@ -36,6 +36,7 @@ import me.zhanghai.android.files.util.fadeInUnsafe
 import me.zhanghai.android.files.util.fadeOutUnsafe
 import me.zhanghai.android.files.util.isReady
 import me.zhanghai.android.files.util.showToast
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.viewModels
 import java.nio.charset.Charset
 
@@ -210,7 +211,7 @@ class TextEditorFragment : Fragment(), ConfirmReloadDialogFragment.Listener,
                 state.throwable.printStackTrace()
                 binding.progress.fadeOutUnsafe()
                 binding.errorText.fadeInUnsafe()
-                binding.errorText.text = state.throwable.toString()
+                binding.errorText.text = state.throwable.toUiText()
                 binding.textEdit.fadeOutUnsafe()
             }
         }
