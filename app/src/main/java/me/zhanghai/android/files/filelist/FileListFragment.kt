@@ -128,6 +128,7 @@ import me.zhanghai.android.files.util.showToast
 import me.zhanghai.android.files.util.startActivitySafe
 import me.zhanghai.android.files.util.supportsExternalStorageManager
 import me.zhanghai.android.files.util.takeIfNotEmpty
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.valueCompat
 import me.zhanghai.android.files.util.viewModels
 import me.zhanghai.android.files.util.withChooser
@@ -621,7 +622,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         }
     }
 
-    // Index0: plain text instead of Throwable.toString(), which shows the package name.
+    // Index0: plain text for the root error. Other errors drop the package name.
     private fun Throwable.toErrorText(): String {
         // ponytail: matches the message text in LibSuFileServiceLauncher. Update it if that text
         // changes, or throw a dedicated exception class there.
@@ -631,9 +632,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         if (isRootUnavailable) {
             return getString(R.string.file_list_error_root_unavailable)
         }
-        val name = javaClass.simpleName
-        val message = localizedMessage
-        return if (message.isNullOrBlank()) name else "$name: $message"
+        return toUiText()
     }
 
     private fun getSubtitle(files: List<FileItem>): String {
