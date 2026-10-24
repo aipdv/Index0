@@ -314,4 +314,10 @@
         <copyright>Copyright 2004 QOS.ch</copyright>
         <license>MIT License</license>
     </notice>
+
+    <notice>
+        <name>Gemma (EmbeddingGemma model)</name>
+        <url>https://ai.google.dev/gemma/terms</url>
+        <copyright>Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms</copyright>
+    </notice>
 </notices>
