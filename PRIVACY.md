@@ -62,7 +62,7 @@ PostHog Inc. processes the analytics data for us on PostHog's EU cloud (servers 
 
 ### How long we keep it
 
-Analytics events are deleted after 1 year.
+Analytics events are deleted after 30 days.
 
 ### Your choices and rights
 
