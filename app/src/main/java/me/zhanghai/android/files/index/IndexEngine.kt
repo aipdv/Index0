@@ -110,6 +110,26 @@ object IndexEngine {
         }
     }
 
+    /**
+     * "Index now". On a phone with photo search it first fetches a missing photo model: the
+     * download at terms time can fail, or the phone ran as Tier C then. Nothing else retries it.
+     */
+    fun indexNow() {
+        if (!isTermsAccepted || visionProvisioner.stateFlow.value == ProvisionState.Ready) {
+            startIndexing()
+            return
+        }
+        scope.launch {
+            val imagesOn = withContext(Dispatchers.IO) {
+                DeviceTierDetector.detect(application).imageEmbeddingEnabled
+            }
+            if (imagesOn) {
+                visionProvisioner.provision(application, BuildConfig.MODEL_BASE_URL)
+            }
+            startIndexing()
+        }
+    }
+
     /** Full pass, then prune. Also used after an exclusion change (never a wipe). */
     fun startIndexing() {
         try {
