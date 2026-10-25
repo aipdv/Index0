@@ -63,7 +63,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
             setTitle(R.string.indexing_start_title)
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
-                IndexEngine.startIndexing()
+                IndexEngine.indexNow()
                 Analytics.capture("indexing_started")
                 true
             }

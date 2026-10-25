@@ -2,9 +2,11 @@ package com.narad.search.lib.index.worker
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import com.narad.search.lib.device.DeviceTierDetector
@@ -20,6 +22,7 @@ import com.narad.search.lib.index.store.IndexRepository
 import com.narad.search.lib.query.model.EmbeddingModel
 import com.narad.search.lib.query.model.image.EG2BitmapImageEncoder
 import com.narad.search.lib.query.model.image.VisionEncoder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -564,6 +567,7 @@ class IndexWorker @JvmOverloads constructor(
      * main thread.
      */
     private suspend fun runIndexing(modelPath: String): Result {
+        promoteToForeground()
         val db = IndexDatabase(applicationContext)
         val repository = IndexRepository(db)
         // M18: unique ID per run, shared across all event writes in this run.
@@ -1103,6 +1107,30 @@ class IndexWorker @JvmOverloads constructor(
             }
         }
         return VisionIndexOutcome.COMPLETE
+    }
+
+    /**
+     * As a plain job the run was cancelled at 30 minutes (JobScheduler timeout, stress test
+     * 2026-10-25), and repeated timeouts get the app throttled. WorkManager ignores the job
+     * stop for foreground work. Android refuses a foreground start from the background (an
+     * overnight run): the run then goes on as a plain job, as before.
+     */
+    private suspend fun promoteToForeground() {
+        try {
+            val notification = IndexNotifications.buildStageNotification(
+                applicationContext, IndexStage.Finding("documents")
+            )
+            setForeground(
+                ForegroundInfo(
+                    IndexNotifications.NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not run in the foreground, running as a plain job", e)
+        }
     }
 
     /**
