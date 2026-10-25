@@ -40,7 +40,9 @@ class ImageIndexer(
     private val repository: IndexRepository,
     private val context: Context,
     // ponytail: callback fires alongside Log.w; null default keeps existing callers unchanged
-    private val onEvent: ((uri: String, errorClass: String, message: String) -> Unit)? = null
+    private val onEvent: ((uri: String, errorClass: String, message: String) -> Unit)? = null,
+    // Called after each photo that was read (not for unchanged photos): uri, ms, result.
+    private val onPhotoDone: (uri: String, ms: Long, result: String) -> Unit = { _, _, _ -> }
 ) {
 
     companion object {
@@ -89,6 +91,9 @@ class ImageIndexer(
                 continue
             }
 
+            val photoStart = System.nanoTime()
+            fun photoDone(result: String) = onPhotoDone(uriString, (System.nanoTime() - photoStart) / 1_000_000, result)
+
             // Decode the bitmap with bounds-decode + inSampleSize (OOM guard for 48 MP photos).
             val bitmap: Bitmap? = decodeBitmapFromUri(uriString)
             if (bitmap == null) {
@@ -96,10 +101,13 @@ class ImageIndexer(
                 // onEvent is NOT invoked here: decodeBitmapFromUri already fired it
                 // at the specific failure point (UnknownDimensions or Exception).
                 // Invoking again here would double-count for one corrupt image.
+                photoDone(RESULT_DECODE_FAIL)
                 step()
                 continue
             }
 
+            // Not reported from the finally: a PhotoPassAborted (gate) photo was never encoded.
+            var result = RESULT_INDEXED
             try {
                 // Encode via EG2 vision encoder + shared LM session.
                 val vector: FloatArray = imageEncoder.encode(bitmap)
@@ -127,9 +135,11 @@ class ImageIndexer(
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to encode or persist image $uriString", e)
                 onEvent?.invoke(uriString, e.javaClass.simpleName, "Failed to encode or persist image")
+                result = RESULT_ENCODE_FAIL
             } finally {
                 bitmap.recycle()
             }
+            photoDone(result)
 
             step()
         }

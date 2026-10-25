@@ -170,6 +170,36 @@ class IndexingViewModelTest {
         assertFalse(resolveIndexingStatus(IndexWork(emptyList(), listOf(info(State.SUCCEEDED, output = notReadyOut)))).photosDeferred)
     }
 
+    // ---- metrics export -------------------------------------------------------------------
+
+    @Test
+    fun `metrics export head is the diagnostics, then one Work line per WorkInfo, then the TSV marker`() {
+        val diagnostics = buildDiagnostics(IndexingStatus(), 2, 3, listOf(event(1)), emptyMap())
+        val id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000")
+        val head = metricsExportHead(
+            diagnostics,
+            listOf(
+                WorkLine("narad_initial_index", id, "SUCCEEDED", 0, stopReason = null),
+                WorkLine("narad_delta_index", id, "ENQUEUED", 2, stopReason = 1),
+            ),
+        )
+        assertTrue(head.startsWith(diagnostics))
+        val rest = head.removePrefix(diagnostics).lines()
+        assertEquals("Work: 2", rest[0])
+        assertEquals("Work: narad_initial_index id=$id state=SUCCEEDED attempt=0 stop=-", rest[1])
+        assertEquals("Work: narad_delta_index id=$id state=ENQUEUED attempt=2 stop=1", rest[2])
+        assertEquals("--- metrics (tsv) ---", rest[3])
+    }
+
+    @Test
+    fun `metrics export tail lists exits, or says not available on API 29`() {
+        assertEquals("Exits: not available\n", metricsExportTail(null))
+        val tail = metricsExportTail(listOf(ExitLine(0L, 3, 400, 900_000, 1_000_000, "lmk\nkill"))).lines()
+        assertEquals("Exits: 1", tail[0])
+        assertEquals("Exits: 1970-01-01T00:00:00Z reason=3 (LOW_MEMORY) importance=400 pss=900000 rss=1000000 lmk kill", tail[1])
+        assertEquals("Exits: 0", metricsExportTail(emptyList()).trimEnd())
+    }
+
     @Test
     fun `E26 running with no finished run has no last run time`() {
         val running = info(State.RUNNING, progress = IndexStage.Reading("photos", 4, 10).toData())

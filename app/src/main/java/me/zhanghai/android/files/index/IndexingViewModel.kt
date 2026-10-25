@@ -1,8 +1,10 @@
 package me.zhanghai.android.files.index
 
+import android.app.ActivityManager
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,7 +19,10 @@ import com.narad.search.lib.index.store.IndexEvent
 import com.narad.search.lib.index.store.IndexRepository
 import com.narad.search.lib.index.worker.IndexStage
 import com.narad.search.lib.index.worker.IndexWorker
+import com.narad.search.lib.index.worker.METRICS_EVENT_CAP
+import com.narad.search.lib.index.worker.METRICS_TSV_HEADER
 import com.narad.search.lib.index.worker.PHOTOS_DEFERRED_STATUS
+import com.narad.search.lib.index.worker.metricsFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -251,6 +257,107 @@ private fun isoTime(ms: Long): String =
     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
         .apply { timeZone = TimeZone.getTimeZone("UTC") }
         .format(Date(ms))
+
+// ---- Metrics export (NARAD_METRICS builds only) ----------------------------------------
+
+/** One WorkInfo of the 4 index work names. [stopReason] is null below API 31. */
+internal data class WorkLine(val name: String, val id: UUID, val state: String, val attempt: Int, val stopReason: Int?)
+
+/** One process exit from ActivityManager (API 30+). */
+internal data class ExitLine(
+    val timestampMs: Long,
+    val reason: Int,
+    val importance: Int,
+    val pssKb: Long,
+    val rssKb: Long,
+    val description: String?,
+)
+
+/**
+ * Pure: the export up to the TSV rows. Part 1 is [buildDiagnostics] as is, part 2 maps each
+ * worker id in the run lines to its work name. The TSV file (with its header) follows it.
+ */
+internal fun metricsExportHead(diagnostics: String, work: List<WorkLine>): String = buildString {
+    append(diagnostics)
+    appendLine("Work: ${work.size}")
+    work.forEach {
+        appendLine("Work: ${it.name} id=${it.id} state=${it.state} attempt=${it.attempt} stop=${it.stopReason ?: "-"}")
+    }
+    appendLine("--- metrics (tsv) ---")
+}
+
+/** Pure: part 4. [exits] is null when the phone keeps no exit history (API 29). */
+internal fun metricsExportTail(exits: List<ExitLine>?): String = buildString {
+    if (exits == null) {
+        appendLine("Exits: not available")
+        return@buildString
+    }
+    appendLine("Exits: ${exits.size}")
+    exits.forEach {
+        val description = it.description?.replace(Regex("[\\t\\r\\n]"), " ") ?: "-"
+        appendLine(
+            "Exits: ${isoTime(it.timestampMs)} reason=${it.reason} (${exitReasonName(it.reason)})" +
+                " importance=${it.importance} pss=${it.pssKb} rss=${it.rssKb} $description"
+        )
+    }
+}
+
+/** ApplicationExitInfo.REASON_* names, so the PO can read a low-memory kill at a glance. */
+private fun exitReasonName(reason: Int): String = when (reason) {
+    1 -> "EXIT_SELF"
+    2 -> "SIGNALED"
+    3 -> "LOW_MEMORY"
+    4 -> "CRASH"
+    5 -> "CRASH_NATIVE"
+    6 -> "ANR"
+    7 -> "INITIALIZATION_FAILURE"
+    8 -> "PERMISSION_CHANGE"
+    9 -> "EXCESSIVE_RESOURCE_USAGE"
+    10 -> "USER_REQUESTED"
+    11 -> "USER_STOPPED"
+    12 -> "DEPENDENCY_DIED"
+    13 -> "OTHER"
+    14 -> "FREEZER"
+    15 -> "PACKAGE_STATE_CHANGE"
+    16 -> "PACKAGE_UPDATED"
+    else -> "UNKNOWN"
+}
+
+/**
+ * Writes the metrics export to the cache folder and returns it. The TSV is copied as a stream
+ * (up to 10 MB), not held in memory. Data leaves the phone only through the share sheet.
+ */
+internal suspend fun writeMetricsExport(context: Context, state: IndexingUiState): File = withContext(Dispatchers.IO) {
+    val events = if (context.getDatabasePath(IndexDatabase.DB_NAME).exists()) {
+        val db = IndexDatabase(context)
+        try { IndexRepository(db).listEvents(METRICS_EVENT_CAP) } finally { db.close() }
+    } else emptyList()
+    val names = resolveMediaStoreNames(context.contentResolver, events.mapNotNull { it.fileName }.toSet())
+    val wm = WorkManager.getInstance(context)
+    val work = listOf(
+        IndexService.INITIAL_INDEX_WORK_NAME, BootReceiver.FOREGROUND_DELTA_WORK_NAME,
+        BootReceiver.DELTA_WORK_NAME, MediaStoreObserver.DELTA_WORK_NAME,
+    ).flatMap { name ->
+        wm.getWorkInfosForUniqueWork(name).get().map {
+            WorkLine(name, it.id, it.state.name, it.runAttemptCount, if (Build.VERSION.SDK_INT >= 31) it.stopReason else null)
+        }
+    }
+    val exits = if (Build.VERSION.SDK_INT >= 30) {
+        context.getSystemService(ActivityManager::class.java)
+            .getHistoricalProcessExitReasons(context.packageName, 0, 50)
+            .map { ExitLine(it.timestamp, it.reason, it.importance, it.pss, it.rss, it.description) }
+    } else null
+    val stamp = SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+        .format(Date())
+    val out = File(context.cacheDir, "index0-metrics-$stamp.txt")
+    out.bufferedWriter().use { w ->
+        w.write(metricsExportHead(buildDiagnostics(state.status, state.photoCount, state.documentCount, events, names), work))
+        val tsv = metricsFile(context)
+        if (tsv.exists()) tsv.bufferedReader().use { it.copyTo(w) } else w.write(METRICS_TSV_HEADER + "\n")
+        w.write(metricsExportTail(exits))
+    }
+    out
+}
 
 // ---- Work observation ------------------------------------------------------------------
 

@@ -3,6 +3,8 @@ package com.narad.search.lib.index.store
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
+import com.narad.search.lib.BuildConfig
+import com.narad.search.lib.index.worker.eventCap
 import com.narad.search.lib.query.store.KeywordStore
 import com.narad.search.lib.query.store.VectorStore
 import java.nio.ByteBuffer
@@ -770,7 +772,8 @@ class IndexRepository(private val db: IndexDatabase) {
     }
 
     /**
-     * Prune index_events: delete rows older than 7 days, then keep only the newest 500.
+     * Prune index_events: delete rows older than 7 days, then keep only the newest 500
+     * (5,000 in a NARAD_METRICS build, so 3 or 4 nights of run lines survive).
      * Call at the end of each index run (from W18 wiring).
      *
      * Errors are caught and logged -- a SQLiteFullException or locked DB must not
@@ -786,12 +789,12 @@ class IndexRepository(private val db: IndexDatabase) {
                 "${IndexDatabase.COL_IE_TIMESTAMP_MS} < ?",
                 arrayOf(sevenDaysAgo.toString())
             )
-            // Keep only the newest 500: delete everything not in the top-500 by id desc.
+            // Keep only the newest N: delete everything not in the top N by id desc.
             w.execSQL(
                 "DELETE FROM ${IndexDatabase.TABLE_INDEX_EVENTS} " +
                 "WHERE ${IndexDatabase.COL_IE_ID} NOT IN (" +
                 "  SELECT ${IndexDatabase.COL_IE_ID} FROM ${IndexDatabase.TABLE_INDEX_EVENTS} " +
-                "  ORDER BY ${IndexDatabase.COL_IE_ID} DESC LIMIT 500" +
+                "  ORDER BY ${IndexDatabase.COL_IE_ID} DESC LIMIT ${eventCap(BuildConfig.METRICS)}" +
                 ")"
             )
         } catch (e: Exception) {
