@@ -141,7 +141,9 @@ class IndexingFragment : PreferenceFragmentCompat() {
             is IndexStage.Reading ->
                 getString(R.string.indexing_status_reading, stage.kind, stage.done, stage.total)
             is IndexStage.Done -> when (photoOnDone) {
-                null -> getString(R.string.indexing_status_done)
+                null -> getString(
+                    if (status.photosDeferred) R.string.indexing_status_documents_done else R.string.indexing_status_done
+                )
                 PhotoModelStatus.Missing -> getString(R.string.indexing_status_photo_model_missing)
                 is PhotoModelStatus.Downloading ->
                     getString(R.string.indexing_status_photo_model_downloading, photoOnDone.percent)
