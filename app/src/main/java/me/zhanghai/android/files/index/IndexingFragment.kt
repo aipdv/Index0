@@ -102,6 +102,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, newValue ->
                 BootReceiver.setOvernightEnabled(context, newValue as Boolean)
                 Analytics.capture("overnight_indexing_toggled", mapOf("enabled" to newValue))
+                IndexPrompts.onOvernightToggled(this@IndexingFragment, newValue)
                 true
             }
         }
@@ -185,6 +186,8 @@ class IndexingFragment : PreferenceFragmentCompat() {
             photoOnDone == PhotoModelStatus.Missing || photoOnDone is PhotoModelStatus.Failed
         startPreference.isEnabled = !status.running
         reindexPreference.isEnabled = !status.running
+        // Heat notice while the first index runs (Index now or the terms flow), battery ask after it.
+        IndexPrompts.maybeShow(this, status.running)
     }
 
     private fun exportMetrics() {
