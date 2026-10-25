@@ -20,6 +20,7 @@ import com.narad.search.lib.index.service.IndexService
 import com.narad.search.lib.index.service.MediaStoreObserver
 import com.narad.search.lib.index.worker.IndexWorker
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -27,12 +28,29 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.zhanghai.android.files.BuildConfig
 import me.zhanghai.android.files.app.application
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal const val FOREGROUND_DELTA_MIN_GAP_MS = 2 * 60 * 1000L
 
 /** Pure: run the app-open delta at most once per [FOREGROUND_DELTA_MIN_GAP_MS] (from Narad). */
 internal fun shouldRunForegroundDelta(lastFinishedAt: Long, now: Long): Boolean =
     lastFinishedAt <= 0L || lastFinishedAt > now || now - lastFinishedAt >= FOREGROUND_DELTA_MIN_GAP_MS
+
+/**
+ * Pure: fetch a missing photo model when the user opens the app. The terms-time download can fail
+ * or the phone ran as Tier C then, and nothing else fetches it. Not while a download runs, and at
+ * most once per process. [imagesOn] (tier check) runs last, only when everything else passes.
+ */
+internal fun shouldFetchPhotoModel(
+    termsAccepted: Boolean,
+    textReady: Boolean,
+    visionState: ProvisionState,
+    triedThisProcess: Boolean,
+    imagesOn: () -> Boolean,
+): Boolean =
+    termsAccepted && textReady && !triedThisProcess &&
+        (visionState is ProvisionState.NotStarted || visionState is ProvisionState.Failed) &&
+        imagesOn()
 
 /** App-wide wiring of the Narad engine (port of NaradApplication). */
 object IndexEngine {
@@ -56,10 +74,15 @@ object IndexEngine {
         get() = application.getSharedPreferences(PREFS, Application.MODE_PRIVATE)
             .getBoolean(KEY_TERMS_ACCEPTED, false)
 
+    // ponytail: one try per process; add backoff if Failed rates show in analytics
+    private val photoModelFetchTried = AtomicBoolean(false)
+
+    private lateinit var diskRefresh: Job
+
     fun initialize() {
         // Without this every PDF extracts to null with no error.
         DocumentExtractor.init(application)
-        scope.launch(Dispatchers.IO) {
+        diskRefresh = scope.launch(Dispatchers.IO) {
             provisioner.refreshFromDisk(application)
             visionProvisioner.refreshFromDisk(application)
         }
@@ -70,6 +93,7 @@ object IndexEngine {
                         BootReceiver.enqueueForegroundDeltaWork(application)
                     }
                 }
+                fetchPhotoModel()
             }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityResumed(activity: Activity) {}
@@ -109,22 +133,20 @@ object IndexEngine {
     }
 
     /**
-     * "Index now". On a phone with photo search it first fetches a missing photo model: the
-     * download at terms time can fail, or the phone ran as Tier C then. Nothing else retries it.
+     * The one path that fetches a missing photo model after terms time. The activity-start hook
+     * calls it at most once per process; a user tap ([userTap]) skips that limit, the user is present.
      */
-    fun indexNow() {
-        if (!isTermsAccepted || visionProvisioner.stateFlow.value == ProvisionState.Ready) {
-            startIndexing()
-            return
-        }
+    fun fetchPhotoModel(userTap: Boolean = false) {
         scope.launch {
-            val imagesOn = withContext(Dispatchers.IO) {
-                DeviceTierDetector.detect(application).imageEmbeddingEnabled
-            }
-            if (imagesOn) {
-                visionProvisioner.provision(application, BuildConfig.MODEL_BASE_URL)
-            }
-            startIndexing()
+            diskRefresh.join()
+            val fetch = shouldFetchPhotoModel(
+                termsAccepted = isTermsAccepted,
+                textReady = provisioner.stateFlow.value == ProvisionState.Ready,
+                visionState = visionProvisioner.stateFlow.value,
+                triedThisProcess = !userTap && photoModelFetchTried.get(),
+            ) { DeviceTierDetector.detect(application).imageEmbeddingEnabled }
+            if (!fetch || (!userTap && !photoModelFetchTried.compareAndSet(false, true))) return@launch
+            visionProvisioner.provision(application, BuildConfig.MODEL_BASE_URL)
         }
     }
 

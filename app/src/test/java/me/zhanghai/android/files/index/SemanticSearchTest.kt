@@ -1,5 +1,6 @@
 package me.zhanghai.android.files.index
 
+import com.narad.search.lib.index.provision.ProvisionState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -44,5 +45,34 @@ class SemanticSearchTest {
         assertEquals(false, shouldRunForegroundDelta(now - 60_000L, now))
         assertEquals(true, shouldRunForegroundDelta(now - FOREGROUND_DELTA_MIN_GAP_MS, now))
         assertEquals(true, shouldRunForegroundDelta(now + 1, now))
+    }
+
+    @Test
+    fun `missing photo model is fetched only when every condition holds`() {
+        fun fetch(
+            terms: Boolean = true,
+            text: Boolean = true,
+            vision: ProvisionState = ProvisionState.NotStarted,
+            tried: Boolean = false,
+            imagesOn: Boolean = true,
+        ) = shouldFetchPhotoModel(terms, text, vision, tried) { imagesOn }
+
+        assertEquals(true, fetch())
+        assertEquals(true, fetch(vision = ProvisionState.Failed("network")))
+        assertEquals(false, fetch(terms = false))
+        assertEquals(false, fetch(text = false))
+        assertEquals(false, fetch(vision = ProvisionState.Ready))
+        assertEquals(false, fetch(vision = ProvisionState.Downloading(1, 2, "vision_encoder_quantized.onnx_data", 10, 100)))
+        assertEquals(false, fetch(vision = ProvisionState.Verifying("vision_encoder_quantized.onnx_data")))
+        assertEquals(false, fetch(tried = true))
+        assertEquals(false, fetch(imagesOn = false))
+    }
+
+    @Test
+    fun `tier check runs only after the cheap conditions pass`() {
+        var tierChecks = 0
+        shouldFetchPhotoModel(false, true, ProvisionState.NotStarted, false) { tierChecks++; true }
+        shouldFetchPhotoModel(true, true, ProvisionState.Ready, false) { tierChecks++; true }
+        assertEquals(0, tierChecks)
     }
 }
