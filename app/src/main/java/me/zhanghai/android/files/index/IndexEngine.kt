@@ -57,7 +57,7 @@ internal fun shouldFetchPhotoModel(
 /** App-wide wiring of the Narad engine (port of NaradApplication). */
 object IndexEngine {
     private const val TAG = "IndexEngine"
-    private const val PREFS = "index0_prefs"
+    internal const val PREFS = "index0_prefs"
     private const val KEY_TERMS_ACCEPTED = "gemma_terms_accepted"
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
