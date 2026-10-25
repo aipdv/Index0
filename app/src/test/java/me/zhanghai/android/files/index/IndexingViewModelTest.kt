@@ -7,6 +7,8 @@ import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.store.IndexEvent
 import com.narad.search.lib.index.worker.IndexStage
 import com.narad.search.lib.index.worker.IndexWorker
+import com.narad.search.lib.index.worker.PHOTOS_DEFERRED_STATUS
+import com.narad.search.lib.index.worker.PHOTOS_NOT_READY_STATUS
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -149,6 +151,23 @@ class IndexingViewModelTest {
         assertEquals(IndexStage.Reading("photos", 4, 10), status.stage)
         assertEquals(126_000L, status.lastRunAt)
         assertEquals(125_000L, status.lastRunDurationMs)
+    }
+
+    @Test
+    fun `idle after a deferred photo pass reports photos deferred, a newer full run clears it`() {
+        val deferredOut = Data.Builder().putAll(doneOutput(count = 3, startedAt = 1_000L, finishedAt = 2_000L))
+            .putString(IndexWorker.KEY_STATUS, PHOTOS_DEFERRED_STATUS).build()
+        val deferred = info(State.SUCCEEDED, output = deferredOut)
+        val status = resolveIndexingStatus(IndexWork(emptyList(), listOf(deferred)))
+        assertEquals(IndexStage.Done(3), status.stage)
+        assertTrue(status.photosDeferred)
+
+        val full = info(State.SUCCEEDED, output = doneOutput(count = 9, startedAt = 3_000L, finishedAt = 4_000L))
+        assertFalse(resolveIndexingStatus(IndexWork(emptyList(), listOf(deferred, full))).photosDeferred)
+
+        val notReadyOut = Data.Builder().putAll(doneOutput(count = 3, startedAt = 1_000L, finishedAt = 2_000L))
+            .putString(IndexWorker.KEY_STATUS, PHOTOS_NOT_READY_STATUS).build()
+        assertFalse(resolveIndexingStatus(IndexWork(emptyList(), listOf(info(State.SUCCEEDED, output = notReadyOut)))).photosDeferred)
     }
 
     @Test

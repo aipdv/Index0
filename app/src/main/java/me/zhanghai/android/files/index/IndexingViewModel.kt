@@ -17,6 +17,7 @@ import com.narad.search.lib.index.store.IndexEvent
 import com.narad.search.lib.index.store.IndexRepository
 import com.narad.search.lib.index.worker.IndexStage
 import com.narad.search.lib.index.worker.IndexWorker
+import com.narad.search.lib.index.worker.PHOTOS_DEFERRED_STATUS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -46,12 +47,14 @@ internal data class IndexWork(val user: List<WorkInfo>, val background: List<Wor
  * [stage] is the live stage while work runs, the last terminal stage (Done or Failed) when
  * idle, or null when no stage is known. [running] is the [isIndexingActive] rule: one-time
  * work counts while unfinished, periodic and MediaStore deltas only while RUNNING.
+ * [photosDeferred]: the last run skipped photos for low memory (idle only).
  */
 internal data class IndexingStatus(
     val stage: IndexStage? = null,
     val running: Boolean = false,
     val lastRunAt: Long? = null,
     val lastRunDurationMs: Long? = null,
+    val photosDeferred: Boolean = false,
 )
 
 internal fun resolveIndexingStatus(work: IndexWork): IndexingStatus {
@@ -81,6 +84,7 @@ internal fun resolveIndexingStatus(work: IndexWork): IndexingStatus {
         running = false,
         lastRunAt = finishedAt,
         lastRunDurationMs = duration,
+        photosDeferred = last.outputData.getString(IndexWorker.KEY_STATUS) == PHOTOS_DEFERRED_STATUS,
     )
 }
 

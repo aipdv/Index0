@@ -48,7 +48,7 @@ class IndexWorkerReadinessTest {
     fun `complete run reports Done with the summed count`() {
         val t = terminalOutput(VisionIndexOutcome.COMPLETE, totalIndexed = 7, photosIndexed = 5)!!
         assertEquals(IndexStage.Done(count = 12, reason = null), t.stage)
-        assertFalse(t.photosNotReady)
+        assertNull(t.status)
     }
 
     @Test
@@ -58,10 +58,34 @@ class IndexWorkerReadinessTest {
     }
 
     @Test
-    fun `text-only run is Done with photos-not-ready flag and no empty reason`() {
+    fun `text-only run is Done with photos-not-ready status and no empty reason`() {
         val t = terminalOutput(VisionIndexOutcome.TEXT_ONLY, 3, 0)!!
         assertEquals(IndexStage.Done(count = 3, reason = null), t.stage)
-        assertTrue(t.photosNotReady)
+        assertEquals(PHOTOS_NOT_READY_STATUS, t.status)
+    }
+
+    @Test
+    fun `deferred run is Done with its own status, not a retry`() {
+        val t = terminalOutput(VisionIndexOutcome.DEFERRED, 3, 0)!!
+        assertEquals(IndexStage.Done(count = 3, reason = null), t.stage)
+        assertEquals(PHOTOS_DEFERRED_STATUS, t.status)
+    }
+
+    // ---- memory gate before the photo pass ------------------------------------------------
+
+    private val mb = 1024L * 1024
+
+    @Test
+    fun `photo pass runs when free memory clears the line by the headroom`() {
+        assertTrue(photoPassFits(1_400 * mb, 200 * mb, lowMemory = false, headroomBytes = 600 * mb))
+        assertTrue(photoPassFits(800 * mb, 200 * mb, lowMemory = false, headroomBytes = 600 * mb))
+    }
+
+    @Test
+    fun `photo pass defers below the headroom or in low-memory state`() {
+        assertFalse(photoPassFits(799 * mb, 200 * mb, lowMemory = false, headroomBytes = 600 * mb))
+        assertFalse(photoPassFits(150 * mb, 200 * mb, lowMemory = false, headroomBytes = 600 * mb))
+        assertFalse(photoPassFits(4_000 * mb, 200 * mb, lowMemory = true, headroomBytes = 600 * mb))
     }
 
     @Test
