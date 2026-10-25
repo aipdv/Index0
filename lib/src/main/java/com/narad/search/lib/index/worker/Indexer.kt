@@ -8,6 +8,30 @@ import com.narad.search.lib.index.store.IndexRepository
 internal const val MAX_CHUNKS_PER_FILE = 256
 
 /**
+ * When to publish progress: at every [everyFiles]-th file, or when [everyMs] passed since the
+ * last publish. A count-only tick left "0 of 331" on screen for 2.5 min (stress test, 2026-10-25).
+ */
+internal class ProgressTicker(
+    private val everyFiles: Int = 50,
+    private val everyMs: Long = 1_000,
+    private val nowMs: () -> Long = { System.nanoTime() / 1_000_000 },
+) {
+    private var lastCount = 0
+    private var lastAt = nowMs()
+
+    fun due(count: Int): Boolean {
+        val now = nowMs()
+        if (count <= 0 || (count % everyFiles != 0 && now - lastAt < everyMs)) return false
+        lastCount = count
+        lastAt = now
+        return true
+    }
+
+    /** True when [count] was not published yet (the final call). */
+    fun pending(count: Int): Boolean = count != lastCount
+}
+
+/**
  * Plain, injectable, testable indexing pipeline.
  *
  * Dependencies are constructor-injected so tests can substitute a [FakeEmbedder]
@@ -22,7 +46,7 @@ internal const val MAX_CHUNKS_PER_FILE = 256
  *     chunks BEFORE writing the new set, then writes all chunks in one transaction
  *     (fix item 11: transaction batching).
  *  6. After all chunks for a file: [repository.markFileIndexed].
- *  7. Every [checkpointEvery] files: call [onProgress] with (processed, total).
+ *  7. Every [checkpointEvery] files or 1 s ([ProgressTicker]): call [onProgress] with (processed, total).
  *     A final progress call is always emitted after the last file.
  *
  * @param embedder          Embedding seam ([OnnxEmbedder] in production; [FakeEmbedder] in tests).
@@ -55,7 +79,7 @@ class Indexer(
      * Index all files in [filePaths].
      *
      * Files that have not changed since last indexing are skipped.
-     * Progress is reported every [checkpointEvery] files and once at the end.
+     * Progress is reported every [checkpointEvery] files or 1 s, and once at the end.
      *
      * @return true when every file was visited; false when [shouldStop] ended the pass early.
      *         The prune (U8) must only run after a true.
@@ -64,6 +88,10 @@ class Indexer(
         val total = filePaths.size
         var processed = 0
         var finished = true
+        val ticker = ProgressTicker(checkpointEvery)
+        fun maybeCheckpoint() {
+            if (ticker.due(processed)) onProgress(processed, total)
+        }
 
         for (filePath in filePaths) {
             if (shouldStop()) { finished = false; break }
@@ -72,7 +100,7 @@ class Indexer(
             // Dedup: skip if not changed
             if (!repository.fileNeedsIndex(filePath, lastModified)) {
                 processed++
-                maybeCheckpoint(processed, total)
+                maybeCheckpoint()
                 continue
             }
 
@@ -89,7 +117,7 @@ class Indexer(
                     chunkCount = 0
                 )
                 processed++
-                maybeCheckpoint(processed, total)
+                maybeCheckpoint()
                 continue
             }
 
@@ -121,19 +149,13 @@ class Indexer(
             )
 
             processed++
-            maybeCheckpoint(processed, total)
+            maybeCheckpoint()
         }
 
-        // Always emit a final progress event if last batch did not land on checkpoint boundary
-        if (total > 0 && processed % checkpointEvery != 0) {
+        // Always emit a final progress event if the last file was not published yet
+        if (total > 0 && ticker.pending(processed)) {
             onProgress(processed, total)
         }
         return finished
-    }
-
-    private fun maybeCheckpoint(processed: Int, total: Int) {
-        if (processed > 0 && processed % checkpointEvery == 0) {
-            onProgress(processed, total)
-        }
     }
 }

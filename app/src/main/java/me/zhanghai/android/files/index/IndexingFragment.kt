@@ -143,6 +143,8 @@ class IndexingFragment : PreferenceFragmentCompat() {
         val photos = state.photoCount ?: 0
         statusPreference.summary = if (photoOnDone is PhotoModelStatus.Failed) {
             getString(R.string.indexing_status_photo_model_failed_summary, plainFailure(photoOnDone.reason))
+        } else if (photoOnDone == null && status.stage is IndexStage.Done && status.photosDeferred) {
+            getString(R.string.indexing_status_photos_deferred)
         } else status.lastRunAt?.let {
             getString(
                 R.string.indexing_counts_last_run, documents, photos,
