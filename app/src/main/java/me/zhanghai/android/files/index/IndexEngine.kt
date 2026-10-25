@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.narad.search.lib.device.DeviceTierDetector
@@ -150,11 +151,12 @@ object IndexEngine {
             ) { DeviceTierDetector.detect(application).imageEmbeddingEnabled }
             if (!fetch || (!userTap && !photoModelFetchTried.compareAndSet(false, true))) return@launch
             visionProvisioner.provision(application, BuildConfig.MODEL_BASE_URL)
-            // A run that started during the download went text-only: queue one for the photos.
-            // WorkManager, not startIndexing(): the user may have left the app by now, and a
-            // background foreground-service start throws. No-op before the first full index.
+            // A run that started during the download is waiting in retry backoff for this model
+            // (or went text-only): REPLACE runs one for the photos now. KEEP would drop this
+            // request behind it. WorkManager, not startIndexing(): the user may have left the
+            // app, and a background foreground-service start throws. No-op before the first index.
             if (visionProvisioner.stateFlow.value == ProvisionState.Ready) {
-                BootReceiver.enqueueForegroundDeltaWork(application)
+                BootReceiver.enqueueForegroundDeltaWork(application, ExistingWorkPolicy.REPLACE)
             }
         }
     }
