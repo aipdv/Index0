@@ -7,7 +7,7 @@ A file manager for Android with meaning search. Find documents and photos by wha
 - Meaning search for documents and photos. The search index and the model stay on your phone.
 - No account.
 - Analytics are off until you turn them on. See the [privacy policy](PRIVACY.md).
-- File manager features from Material Files: root access, archives, SMB, SFTP, FTP and WebDAV, themes.
+- File manager: root access, archives, SMB, SFTP, FTP and WebDAV, themes.
 - Needs Android 10 or later.
 
 ## Install
