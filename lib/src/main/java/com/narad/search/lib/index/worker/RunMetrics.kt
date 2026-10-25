@@ -90,8 +90,8 @@ internal fun tsvRow(
 }
 
 /**
- * Writes one run's rows to [file]. At [capBytes] it stops writing and calls [onFull] once
- * (a file already at the cap from an earlier run calls nothing). Write errors are logged only.
+ * Writes one run's rows to [file]. At [capBytes] it stops writing and calls [onFull] once, ever:
+ * a marker file next to it keeps later runs quiet. Write errors are logged only.
  */
 internal class RunMetrics(
     private val file: File,
@@ -100,19 +100,21 @@ internal class RunMetrics(
     private val now: () -> Long = System::currentTimeMillis,
     private val onFull: () -> Unit,
 ) {
-    private var full = file.length() >= capBytes
+    private val fullMarker = File(file.path + ".full")
+    private var full = fullMarker.exists()
 
     fun append(row: String) {
         if (full) return
         try {
             val header = if (file.length() == 0L) METRICS_TSV_HEADER + "\n" else ""
             val bytes = (header + row + "\n").toByteArray()
+            file.parentFile?.mkdirs()
             if (file.length() + bytes.size > capBytes) {
                 full = true
+                fullMarker.createNewFile()
                 onFull()
                 return
             }
-            file.parentFile?.mkdirs()
             file.appendBytes(bytes)
         } catch (e: Exception) {
             Log.w("RunMetrics", "Failed to write metrics row", e)
