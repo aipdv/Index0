@@ -61,7 +61,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
         startPreference = Preference(context).apply {
             setTitle(R.string.indexing_start_title)
             isIconSpaceReserved = false
-            setOnPreferenceClickListener { IndexEngine.startIndexing(); true }
+            setOnPreferenceClickListener { IndexEngine.indexNow(); true }
         }
         reindexPreference = Preference(context).apply {
             setTitle(R.string.indexing_reindex_title)
