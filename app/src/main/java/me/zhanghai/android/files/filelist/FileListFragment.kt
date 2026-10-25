@@ -45,6 +45,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -52,6 +53,7 @@ import com.leinardi.android.speeddial.SpeedDialView
 import java8.nio.file.Path
 import java8.nio.file.Paths
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 import me.zhanghai.android.files.R
 import me.zhanghai.android.files.app.Analytics
@@ -76,6 +78,7 @@ import me.zhanghai.android.files.filejob.FileJobService
 import me.zhanghai.android.files.filelist.FileSortOptions.By
 import me.zhanghai.android.files.filelist.FileSortOptions.Order
 import me.zhanghai.android.files.fileproperties.FilePropertiesDialogFragment
+import me.zhanghai.android.files.index.IndexPrompts
 import me.zhanghai.android.files.navigation.BookmarkDirectories
 import me.zhanghai.android.files.navigation.BookmarkDirectory
 import me.zhanghai.android.files.navigation.NavigationFragment
@@ -387,7 +390,13 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         }
         if (!viewModel.isStorageAccessRequested && !viewModel.isNotificationPermissionRequested &&
             requireActivity().intent.action == Intent.ACTION_MAIN) {
-            Analytics.maybeAsk(this)
+            // Better Files: one prompt per resume, in this order: heat notice, battery, analytics.
+            viewLifecycleOwner.lifecycleScope.launch {
+                val firstIndexRunning = IndexPrompts.isFirstIndexRunning()
+                if (isResumed && !IndexPrompts.maybeShow(this@FileListFragment, firstIndexRunning)) {
+                    Analytics.maybeAsk(this@FileListFragment)
+                }
+            }
         }
     }
 
