@@ -10,6 +10,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
+import com.narad.search.lib.BuildConfig
 import com.narad.search.lib.device.DeviceTierDetector
 import com.narad.search.lib.index.chunking.Chunker
 import com.narad.search.lib.index.enumeration.MediaStoreEnumerator
@@ -584,12 +585,38 @@ class IndexWorker @JvmOverloads constructor(
      * main thread.
      */
     private suspend fun runIndexing(modelPath: String): Result {
-        promoteToForeground()
+        val foreground = promoteToForeground()
         val db = IndexDatabase(applicationContext)
         val repository = IndexRepository(db)
         // M18: unique ID per run, shared across all event writes in this run.
         val runId = java.util.UUID.randomUUID().toString()
         val startedAt = System.currentTimeMillis()
+        // Run lines (every build): the worker id maps to the work name in the metrics export.
+        val device = deviceState(applicationContext)
+        repository.appendEvent(
+            runId, "run", "INFO", null, null,
+            runStartMessage(id.toString(), runAttemptCount + 1, foreground, device.charging, device.batteryPct, device.idle)
+        )
+        // NARAD_METRICS builds only: per-file and PSS rows. R8 drops this in the public APK.
+        val metrics = if (BuildConfig.METRICS) {
+            RunMetrics(metricsFile(applicationContext), runId) {
+                repository.appendEvent(runId, "metrics", "WARN", null, null, "metrics file full")
+            }
+        } else null
+        metrics?.pss("start")
+        var outcome = "error"
+        var docsTotal = 0
+        var photosTotal = 0
+        var filesRead = 0
+        // Each file that was read (unchanged files are not). Name and size cost one query: metrics only.
+        val onFileRead: (target: String, mime: String?, ms: Long, chunks: Int, result: String) -> Unit =
+            { target, mime, ms, chunks, result ->
+                filesRead++
+                if (metrics != null) {
+                    val (name, size) = nameAndSize(applicationContext, target)
+                    metrics.file(name, mime, size, ms, chunks, result)
+                }
+            }
         var embedder: LazyEmbedder? = null
         var visionOutcome = VisionIndexOutcome.COMPLETE
         // Track total files indexed across all passes for Done(count).
@@ -626,6 +653,7 @@ class IndexWorker @JvmOverloads constructor(
                     val waitPerm = IndexStage.WaitingForPermission(which = whichPerm)
                     setProgress(waitPerm.toData())
                     updateStageNotification(waitPerm)
+                    outcome = "waiting_permission"
                     // Return success - app-open delta re-runs after the user grants access.
                     // E19: carry the stage so the first-index flag rule can tell this from Paused.
                     return Result.success(
@@ -661,7 +689,7 @@ class IndexWorker @JvmOverloads constructor(
                     embedderFactory.invoke(modelPath)
                 } else {
                     val tokenizerPath = File(modelPath).resolveSibling("tokenizer.json").absolutePath
-                    EmbeddingModelFactory.build(modelPath, tokenizerPath)
+                    EmbeddingModelFactory.build(modelPath, tokenizerPath).also { metrics?.pss("text_model") }
                 }
             }
             embedder = lazyEmbedder
@@ -677,6 +705,7 @@ class IndexWorker @JvmOverloads constructor(
                 }
                 val onDocProgress: (Int, Int) -> Unit = { processed, total ->
                     totalIndexed = processed
+                    docsTotal = total
                     val stage = IndexStage.Reading("documents", processed, total)
                     kotlinx.coroutines.runBlocking { setProgress(stage.toData()) }
                     updateStageNotification(stage)
@@ -695,6 +724,7 @@ class IndexWorker @JvmOverloads constructor(
                             if (!currentTargetWarned) {
                                 repository.appendEvent(runId, "extraction", "WARN", path, e.javaClass.simpleName, "Failed to extract text")
                             }
+                            currentTargetWarned = true
                             null
                         }
                     },
@@ -702,7 +732,10 @@ class IndexWorker @JvmOverloads constructor(
                     repository = repository,
                     checkpointEvery = 50,
                     onProgress = onDocProgress,
-                    shouldStop = { isStopped }
+                    shouldStop = { isStopped },
+                    onFileDone = { path, ms, chunks ->
+                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned))
+                    }
                 )
                 indexer.indexFiles(rawFilePaths)
                 if (isStopped) {
@@ -737,8 +770,10 @@ class IndexWorker @JvmOverloads constructor(
                     }
 
                     val docDateMap = docTargets.associate { it.uri to it.lastModified }
+                    val docMimeMap = docTargets.associate { it.uri to it.mimeType }
                     val onDocProgress: (Int, Int) -> Unit = { processed, total ->
                         totalIndexed = processed
+                        docsTotal = total
                         val stage = IndexStage.Reading("documents", processed, total)
                         kotlinx.coroutines.runBlocking { setProgress(stage.toData()) }
                         updateStageNotification(stage)
@@ -755,6 +790,7 @@ class IndexWorker @JvmOverloads constructor(
                                 if (!currentTargetWarned) {
                                     repository.appendEvent(runId, "extraction", "WARN", uriString, e.javaClass.simpleName, "Failed to extract text")
                                 }
+                                currentTargetWarned = true
                                 null
                             }
                         },
@@ -763,7 +799,10 @@ class IndexWorker @JvmOverloads constructor(
                         checkpointEvery = 50,
                         onProgress = onDocProgress,
                         lastModifiedOf = { uriString -> docDateMap[uriString] ?: 0L },
-                        shouldStop = { isStopped }
+                        shouldStop = { isStopped },
+                        onFileDone = { uriString, ms, chunks ->
+                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned))
+                        }
                     )
                     val docUris = docTargets.map { it.uri }
                     val docPassFinished = indexer.indexFiles(docUris) && !isStopped
@@ -773,6 +812,7 @@ class IndexWorker @JvmOverloads constructor(
                         val removed = repository.pruneDocuments(docUris.toSet(), presentVolumes())
                         Log.d(TAG, "Pruned $removed deleted document(s)")
                     }
+                    metrics?.pss("docs_done")
                 }
 
                 if (isStopped) {
@@ -784,6 +824,7 @@ class IndexWorker @JvmOverloads constructor(
                     val sharedModel = { (lazyEmbedder.get() as? OnnxEmbedder)?.model }
                     val imgOnProgress: (Int, Int) -> Unit = { processed, total ->
                         photosIndexed = processed  // cumulative from ImageIndexer, not additive
+                        photosTotal = total
                         val stage = IndexStage.Reading("photos", processed, total)
                         kotlinx.coroutines.runBlocking { setProgress(stage.toData()) }
                         updateStageNotification(stage)
@@ -795,7 +836,11 @@ class IndexWorker @JvmOverloads constructor(
                             kotlinx.coroutines.runBlocking { setProgress(s.toData()) }
                             updateStageNotification(s)
                         },
-                        runId = runId
+                        runId = runId,
+                        onPhotoRead = { uri, mime, ms, result ->
+                            onFileRead(uri, mime, ms, if (result == RESULT_INDEXED) 1 else 0, result)
+                        },
+                        onVisionBuilt = { metrics?.pss("vision_model") }
                     )
                 }
             }
@@ -804,6 +849,7 @@ class IndexWorker @JvmOverloads constructor(
             // setProgress reaches the catch below (ERROR event) before the finally closes the DB.
             // Paused: already published above, do not overwrite with Done.
             if (wasStopped) {
+                outcome = "paused"
                 Result.success(
                     androidx.work.Data.Builder()
                         .putLong(KEY_STARTED_AT, startedAt)
@@ -812,6 +858,7 @@ class IndexWorker @JvmOverloads constructor(
                 )
             } else {
                 val terminal = terminalOutput(visionOutcome, totalIndexed, photosIndexed)
+                outcome = if (terminal == null) "retry" else visionOutcome.name.lowercase()
                 if (terminal == null) {
                     Result.retry()
                 } else {
@@ -833,6 +880,7 @@ class IndexWorker @JvmOverloads constructor(
         } catch (e: Exception) {
             // M18: write run-level failure before finally prunes and closes the DB.
             // CancellationException is rethrown without an event (it is not an indexing failure).
+            if (e is kotlinx.coroutines.CancellationException) outcome = "cancelled"
             if (e !is kotlinx.coroutines.CancellationException) {
                 repository.appendEvent(
                     runId      = runId,
@@ -860,6 +908,17 @@ class IndexWorker @JvmOverloads constructor(
                 Log.w(TAG, "Failed to close embedder", e)
                 repository.appendEvent(runId, "worker", "WARN", null, e.javaClass.simpleName, "Failed to close embedder")
             }
+            // Run end in the finally (D14): a stop arrives as a cancellation, and no other
+            // block runs. Non-suspend calls only.
+            metrics?.pss("end")
+            val stop = if (android.os.Build.VERSION.SDK_INT >= 31 && isStopped) this@IndexWorker.stopReason else null
+            repository.appendEvent(
+                runId, "run", "INFO", null, null,
+                runEndMessage(
+                    outcome, totalIndexed, docsTotal, photosIndexed, photosTotal, filesRead,
+                    System.currentTimeMillis() - startedAt, stop
+                )
+            )
             // M18: prune before closing DB so pruneEvents can write.
             repository.pruneEvents()
             db.close()
@@ -969,7 +1028,11 @@ class IndexWorker @JvmOverloads constructor(
         /** Called right before enumerateImages so the notification shows Finding("photos"). */
         onFinding: () -> Unit = {},
         /** M18: run ID for event writing. Required; always passed by runIndexing. */
-        runId: String
+        runId: String,
+        /** Each photo read: uri, MediaStore MIME type, ms, result. */
+        onPhotoRead: (String, String?, Long, String) -> Unit = { _, _, _, _ -> },
+        /** Called once the vision encoder is built (metrics PSS point). */
+        onVisionBuilt: () -> Unit = {}
     ): VisionIndexOutcome {
         val visionModelPath = IndexService.getVisionEncoderPath(applicationContext)
 
@@ -1050,12 +1113,13 @@ class IndexWorker @JvmOverloads constructor(
                             " lowMemory=${mem.lowMemory} totalMem=${mem.totalMem}" +
                             " decision=${if (fits) "run" else "defer"}"
                     )
-                    if (!fits) {
-                        repository.appendEvent(runId, "photos", "INFO", null, null, "photos deferred: low memory")
-                        throw PhotoPassAborted(VisionIndexOutcome.DEFERRED)
-                    }
+                    repository.appendEvent(
+                        runId, "photos", "INFO", null, null,
+                        gateMessage(mem.availMem, mem.threshold, mem.lowMemory, mem.totalMem, fits)
+                    )
+                    if (!fits) throw PhotoPassAborted(VisionIndexOutcome.DEFERRED)
                     try {
-                        EG2BitmapImageEncoder(sharedModel, VisionEncoder(visionModelPath))
+                        EG2BitmapImageEncoder(sharedModel, VisionEncoder(visionModelPath)).also { onVisionBuilt() }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to build EG2BitmapImageEncoder, skipping image branch", e)
                         repository.appendEvent(runId, "photos", "WARN", null, e.javaClass.simpleName, "Failed to build EG2BitmapImageEncoder")
@@ -1091,6 +1155,7 @@ class IndexWorker @JvmOverloads constructor(
             onProgress(0, imageTargets.size)
 
             val imageDateMap = imageTargets.associate { it.uri to it.lastModified }
+            val imageMimeMap = imageTargets.associate { it.uri to it.mimeType }
 
             val imageIndexer = ImageIndexer(
                 imageEncoder = encoder,
@@ -1098,7 +1163,8 @@ class IndexWorker @JvmOverloads constructor(
                 context      = applicationContext,
                 onEvent      = { uri, errorClass, msg ->
                     repository.appendEvent(runId, "photos", "WARN", uri, errorClass, msg)
-                }
+                },
+                onPhotoDone  = { uri, ms, result -> onPhotoRead(uri, imageMimeMap[uri], ms, result) }
             )
 
             val imageUris = imageTargets.map { it.uri }
@@ -1148,7 +1214,8 @@ class IndexWorker @JvmOverloads constructor(
      * stop for foreground work. Android refuses a foreground start from the background (an
      * overnight run): the run then goes on as a plain job, as before.
      */
-    private suspend fun promoteToForeground() {
+    /** True when the run is a foreground service now. */
+    private suspend fun promoteToForeground(): Boolean {
         try {
             val notification = IndexNotifications.buildStageNotification(
                 applicationContext, IndexStage.Finding("documents")
@@ -1159,10 +1226,12 @@ class IndexWorker @JvmOverloads constructor(
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
             )
+            return true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Could not run in the foreground, running as a plain job", e)
+            return false
         }
     }
 
