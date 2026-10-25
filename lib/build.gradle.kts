@@ -54,6 +54,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+        // NARAD_METRICS=1 at build time: per-file timing and PSS rows plus the export (test builds only).
+        buildConfigField("boolean", "METRICS", (System.getenv("NARAD_METRICS") == "1").toString())
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
