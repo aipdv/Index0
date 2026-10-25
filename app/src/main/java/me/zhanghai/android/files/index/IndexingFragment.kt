@@ -12,6 +12,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.narad.search.lib.BuildConfig as LibBuildConfig
 import com.narad.search.lib.device.DeviceTierDetector
 import com.narad.search.lib.index.enumeration.ExcludedFolders
 import com.narad.search.lib.index.provision.ProvisionState
@@ -20,13 +21,20 @@ import com.narad.search.lib.index.worker.IndexStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java8.nio.file.Paths
 import kotlinx.coroutines.withContext
 import me.zhanghai.android.files.R
 import me.zhanghai.android.files.app.Analytics
+import me.zhanghai.android.files.file.MimeType
+import me.zhanghai.android.files.file.fileProviderUri
 import me.zhanghai.android.files.filelist.FileListActivity
 import me.zhanghai.android.files.ui.PreferenceFragmentCompat
+import me.zhanghai.android.files.util.createSendStreamIntent
 import me.zhanghai.android.files.util.setSpanClickable
+import me.zhanghai.android.files.util.showToast
+import me.zhanghai.android.files.util.startActivitySafe
 import me.zhanghai.android.files.util.viewModels
+import me.zhanghai.android.files.util.withChooser
 
 /** Index0: indexing status, model download, overnight toggle and excluded folders. */
 class IndexingFragment : PreferenceFragmentCompat() {
@@ -99,6 +107,15 @@ class IndexingFragment : PreferenceFragmentCompat() {
         }
         listOf(statusPreference, modelPreference, startPreference, reindexPreference, overnightPreference)
             .forEach { statusCategory.addPreference(it) }
+        // NARAD_METRICS test build only; R8 drops it from the public APK.
+        if (LibBuildConfig.METRICS) {
+            statusCategory.addPreference(Preference(context).apply {
+                setTitle(R.string.indexing_export_metrics_title)
+                setSummary(R.string.indexing_export_metrics_summary)
+                isIconSpaceReserved = false
+                setOnPreferenceClickListener { exportMetrics(); true }
+            })
+        }
 
         excludedCategory = PreferenceCategory(context).apply {
             setTitle(R.string.indexing_excluded_category)
@@ -168,6 +185,24 @@ class IndexingFragment : PreferenceFragmentCompat() {
             photoOnDone == PhotoModelStatus.Missing || photoOnDone is PhotoModelStatus.Failed
         startPreference.isEnabled = !status.running
         reindexPreference.isEnabled = !status.running
+    }
+
+    private fun exportMetrics() {
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val file = try {
+                writeMetricsExport(appContext, viewModel.uiState.value)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            if (file == null) {
+                showToast(R.string.indexing_export_metrics_failed)
+                return@launch
+            }
+            startActivitySafe(Paths.get(file.path).fileProviderUri.createSendStreamIntent(MimeType.TEXT_PLAIN).withChooser())
+        }
     }
 
     private fun plainFailure(reason: String): String =

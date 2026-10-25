@@ -72,7 +72,9 @@ class Indexer(
     private val lastModifiedOf: (filePath: String) -> Long = { java.io.File(it).lastModified() },
     // Checked before each file. Each file is persisted on its own, so stopping between
     // files is safe and the next run resumes via fileNeedsIndex().
-    private val shouldStop: () -> Boolean = { false }
+    private val shouldStop: () -> Boolean = { false },
+    // Called after each file that was read (not for unchanged files): path, ms, chunks written.
+    private val onFileDone: (filePath: String, ms: Long, chunks: Int) -> Unit = { _, _, _ -> }
 ) {
 
     /**
@@ -104,6 +106,9 @@ class Indexer(
                 continue
             }
 
+            val fileStart = System.nanoTime()
+            fun fileDone(chunks: Int) = onFileDone(filePath, (System.nanoTime() - fileStart) / 1_000_000, chunks)
+
             // Extract text
             val text = extractText(filePath)
             if (text.isNullOrBlank()) {
@@ -116,6 +121,7 @@ class Indexer(
                     lastModified = lastModified,
                     chunkCount = 0
                 )
+                fileDone(0)
                 processed++
                 maybeCheckpoint()
                 continue
@@ -147,6 +153,7 @@ class Indexer(
                 lastModified = lastModified,
                 chunkCount = chunkData.size
             )
+            fileDone(chunkData.size)
 
             processed++
             maybeCheckpoint()
