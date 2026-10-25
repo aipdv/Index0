@@ -3,6 +3,7 @@ package me.zhanghai.android.files.index
 import androidx.work.Data
 import androidx.work.WorkInfo
 import androidx.work.WorkInfo.State
+import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.store.IndexEvent
 import com.narad.search.lib.index.worker.IndexStage
 import com.narad.search.lib.index.worker.IndexWorker
@@ -391,5 +392,23 @@ class IndexingViewModelTest {
         val text = vm.diagnosticsText()
         assertTrue(text.contains("Photos indexed: 4"))
         assertTrue(text.contains("x.pdf"))
+    }
+
+    @Test fun photoModelStatus_coversMissingDownloadingFailed_onlyWithPhotoSearch() {
+        assertEquals(PhotoModelStatus.Missing, photoModelStatus(true, ProvisionState.NotStarted))
+        assertEquals(
+            PhotoModelStatus.Downloading(25),
+            photoModelStatus(true, ProvisionState.Downloading(0, 2, "vision.onnx", 50, 200)),
+        )
+        assertEquals(
+            PhotoModelStatus.Downloading(0),
+            photoModelStatus(true, ProvisionState.Downloading(0, 2, "vision.onnx", 50, -1)),
+        )
+        assertEquals(PhotoModelStatus.Downloading(100), photoModelStatus(true, ProvisionState.Verifying("vision.onnx")))
+        assertEquals(PhotoModelStatus.Failed("no space"), photoModelStatus(true, ProvisionState.Failed("no space")))
+        assertNull(photoModelStatus(true, ProvisionState.Ready))
+        // Tier C has no photo search: never ask for the photo model.
+        assertNull(photoModelStatus(false, ProvisionState.NotStarted))
+        assertNull(photoModelStatus(false, ProvisionState.Failed("no space")))
     }
 }
