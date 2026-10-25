@@ -135,15 +135,22 @@ class BootReceiver : BroadcastReceiver() {
          *
          * No idle/charging constraint - runs immediately in the foreground so the
          * user sees fresh results without waiting for an overnight idle window.
+         *
+         * [policy] REPLACE (photo model just installed): a delta that is running or waiting in
+         * retry backoff for that model is replaced by one that runs now. Safe: files persist
+         * one by one and the worker checks for a stop at every file and chunk.
          */
-        fun enqueueForegroundDeltaWork(context: Context) {
+        fun enqueueForegroundDeltaWork(
+            context: Context,
+            policy: ExistingWorkPolicy = ExistingWorkPolicy.KEEP,
+        ) {
             enqueueIfModelReady(IndexService.getDefaultModelPath(context), IndexService.isFirstIndexDone(context)) { modelPath ->
                 val request = OneTimeWorkRequestBuilder<IndexWorker>()
                     .setInputData(workDataOf(IndexWorker.KEY_MODEL_PATH to modelPath))
                     .build()
                 WorkManager.getInstance(context).enqueueUniqueWork(
                     FOREGROUND_DELTA_WORK_NAME,
-                    ExistingWorkPolicy.KEEP,
+                    policy,
                     request
                 )
             }
