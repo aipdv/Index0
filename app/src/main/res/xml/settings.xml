@@ -9,6 +9,15 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- Better Files: opens the Indexing screen (intent set in SettingsPreferenceFragment). -->
+    <PreferenceCategory android:title="@string/settings_search_title">
+
+        <Preference
+            android:key="@string/pref_key_indexing"
+            android:title="@string/indexing_title"
+            android:summary="@string/settings_indexing_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/settings_interface_title">
 
         <me.zhanghai.android.files.settings.LocalePreference
