@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.service.BootReceiver
 import com.narad.search.lib.index.service.IndexService
 import com.narad.search.lib.index.service.MediaStoreObserver
@@ -96,6 +97,30 @@ internal fun ringFraction(stage: IndexStage?): Float? = when (stage) {
     is IndexStage.Done -> 1f
     is IndexStage.WaitingForModel -> stage.percent?.let { (it / 100f).coerceIn(0f, 1f) }
     else -> null
+}
+
+/** What the status row says about the photo model instead of "Up to date". */
+internal sealed class PhotoModelStatus {
+    object Missing : PhotoModelStatus()
+    data class Downloading(val percent: Int) : PhotoModelStatus()
+    data class Failed(val reason: String) : PhotoModelStatus()
+}
+
+/**
+ * Pure: null when the phone has no photo search ([imagesOn] false, Tier C) or the photo model
+ * is ready. Percent is per file, the same as the text model row.
+ */
+internal fun photoModelStatus(imagesOn: Boolean, state: ProvisionState): PhotoModelStatus? {
+    if (!imagesOn) return null
+    return when (state) {
+        ProvisionState.Ready -> null
+        ProvisionState.NotStarted -> PhotoModelStatus.Missing
+        is ProvisionState.Downloading -> PhotoModelStatus.Downloading(
+            if (state.bytesTotal > 0) (state.bytesDownloaded * 100 / state.bytesTotal).toInt().coerceIn(0, 100) else 0
+        )
+        is ProvisionState.Verifying -> PhotoModelStatus.Downloading(100)
+        is ProvisionState.Failed -> PhotoModelStatus.Failed(state.reason)
+    }
 }
 
 /** Progress of one type row: [total] is null when only an indexed count is known. */
