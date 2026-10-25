@@ -150,6 +150,12 @@ object IndexEngine {
             ) { DeviceTierDetector.detect(application).imageEmbeddingEnabled }
             if (!fetch || (!userTap && !photoModelFetchTried.compareAndSet(false, true))) return@launch
             visionProvisioner.provision(application, BuildConfig.MODEL_BASE_URL)
+            // A run that started during the download went text-only: queue one for the photos.
+            // WorkManager, not startIndexing(): the user may have left the app by now, and a
+            // background foreground-service start throws. No-op before the first full index.
+            if (visionProvisioner.stateFlow.value == ProvisionState.Ready) {
+                BootReceiver.enqueueForegroundDeltaWork(application)
+            }
         }
     }
 
