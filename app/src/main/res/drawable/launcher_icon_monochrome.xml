@@ -5,14 +5,29 @@
   ~ All Rights Reserved.
   -->
 
+<!-- Better Files themed icon (Android 13+), from art/better-files-icon-dot-monochrome.svg.
+     VectorDrawable has no <mask>, so the cut-outs use opposite winding: the inner shape runs
+     counter-clockwise, which makes it a hole under both nonzero and evenOdd. -->
 <vector
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="90dp"
-    android:height="90dp"
-    android:viewportWidth="90"
-    android:viewportHeight="90">
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
 
+    <!-- Folder, minus the gap ring (circle r 11.5 at 71,41) -->
+    <group>
+        <clip-path
+            android:pathData="M0,0 H108 V108 H0 Z M59.5,41 A11.5,11.5 0 1 0 82.5,41 A11.5,11.5 0 1 0 59.5,41 Z" />
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M35,35 H45.5 A3,3 0 0 1 47.62,35.88 L52,40 H71 A5,5 0 0 1 76,45 V52 H30 V40 A5,5 0 0 1 35,35 Z" />
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M35,44 H71 A5,5 0 0 1 76,49 V69 A5,5 0 0 1 71,74 H35 A5,5 0 0 1 30,69 V49 A5,5 0 0 1 35,44 Z" />
+    </group>
+    <!-- Badge (circle r 9.5) with the plus cut out -->
     <path
         android:fillColor="@android:color/white"
-        android:pathData="m 40.472,35.4 3.2,3.2 H 57.8 v 16 H 32.2 V 35.4 h 8.272 M 41.8,32.2 h -9.6 c -1.76,0 -3.184,1.44 -3.184,3.2 L 29,54.6 c 0,1.76 1.44,3.2 3.2,3.2 h 25.6 c 1.76,0 3.2,-1.44 3.2,-3.2 v -16 c 0,-1.76 -1.44,-3.2 -3.2,-3.2 H 45 Z" />
+        android:pathData="M61.5,41 A9.5,9.5 0 1 1 80.5,41 A9.5,9.5 0 1 1 61.5,41 Z M69.6,36.9 V39.6 H66.9 A1.4,1.4 0 0 0 66.9,42.4 H69.6 V45.1 A1.4,1.4 0 0 0 72.4,45.1 V42.4 H75.1 A1.4,1.4 0 0 0 75.1,39.6 H72.4 V36.9 A1.4,1.4 0 0 0 69.6,36.9 Z" />
 </vector>
