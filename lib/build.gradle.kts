@@ -149,7 +149,7 @@ dependencies {
     }
 
     // WorkManager — used by IndexWorker
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
 
     // AndroidX Core — provides ServiceCompat (API-34 startForeground fix) and
     // NotificationManagerCompat (progress notification updates from IndexWorker).
@@ -210,7 +210,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test:core:1.5.0")
-    androidTestImplementation("androidx.work:work-testing:2.9.0")
+    androidTestImplementation("androidx.work:work-testing:2.10.5")
 
     // MockWebServer for ModelProvisionerTest (serves synthetic payloads;
     // no real ONNX bytes needed — just a few KB per test).
