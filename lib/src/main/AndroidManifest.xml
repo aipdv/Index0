@@ -33,6 +33,15 @@
             android:foregroundServiceType="dataSync" />
 
         <!--
+            WorkManager's foreground service: IndexWorker runs in it (setForeground) so a long
+            run is not cancelled at the job time limit. Same type as IndexService.
+        -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!--
             BootReceiver - re-enqueues the periodic delta WorkManager job after reboot.
             Exported: true (system must be able to deliver BOOT_COMPLETED broadcast).
             Permission guard is the RECEIVE_BOOT_COMPLETED permission in :app manifest.
