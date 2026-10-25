@@ -142,7 +142,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
         val documents = state.documentCount ?: 0
         val photos = state.photoCount ?: 0
         statusPreference.summary = if (photoOnDone is PhotoModelStatus.Failed) {
-            getString(R.string.indexing_status_photo_model_failed_summary, photoOnDone.reason)
+            getString(R.string.indexing_status_photo_model_failed_summary, plainFailure(photoOnDone.reason))
         } else status.lastRunAt?.let {
             getString(
                 R.string.indexing_counts_last_run, documents, photos,
@@ -155,6 +155,9 @@ class IndexingFragment : PreferenceFragmentCompat() {
         reindexPreference.isEnabled = !status.running
     }
 
+    private fun plainFailure(reason: String): String =
+        plainDownloadFailure(reason) ?: getString(R.string.indexing_download_failed_connection)
+
     private fun bindModel(state: ProvisionState) {
         modelPreference.summary = when (state) {
             ProvisionState.NotStarted -> getString(R.string.indexing_model_not_downloaded)
@@ -164,7 +167,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
             )
             is ProvisionState.Verifying -> getString(R.string.indexing_model_verifying)
             ProvisionState.Ready -> getString(R.string.indexing_model_ready)
-            is ProvisionState.Failed -> getString(R.string.indexing_model_failed, state.reason)
+            is ProvisionState.Failed -> getString(R.string.indexing_model_failed, plainFailure(state.reason))
         }
         val ready = state == ProvisionState.Ready
         val access = Environment.isExternalStorageManager()
