@@ -19,6 +19,9 @@
     <!-- Make lint happy, although actually we never use this in a non-night configuration. -->
     <color name="color_primary_dark_black">@android:color/transparent</color>
 
+    <!-- Better Files: launcher icon background layer. -->
+    <color name="launcher_icon_background">#FFFFFF</color>
+
     <color name="color_primary_light">@color/google_blue_600</color>
     <color name="color_primary_dark">@color/google_blue_300</color>
     <color name="color_primary">@color/color_primary_light</color>
