@@ -59,7 +59,7 @@ class ImageIndexer(
      * @param imageUris     List of content-URI strings for images to index.
      * @param dateMapSec    Map of URI → DATE_MODIFIED (seconds) for dedup.
      *                      If a URI is absent, lastModified=0 is used (always re-indexed).
-     * @param onProgress    Optional progress callback (indexed, total).
+     * @param onProgress    Optional progress callback (indexed, total), every 50 photos or 1 s and at the end.
      * @return true when every URI was visited; false when [shouldStop] ended the pass early.
      *         The prune (U8) must only run after a true.
      */
@@ -72,6 +72,12 @@ class ImageIndexer(
         val total = imageUris.size
         var indexed = 0
         var finished = true
+        // Skipped and unreadable photos tick too, so a mostly unchanged library still moves.
+        val ticker = ProgressTicker()
+        fun step() {
+            indexed++
+            if (total > 0 && ticker.due(indexed)) onProgress(indexed, total)
+        }
 
         for (uriString in imageUris) {
             if (shouldStop()) { finished = false; break }
@@ -79,7 +85,7 @@ class ImageIndexer(
 
             // Dedup: skip if not changed since last indexed.
             if (!repository.fileNeedsIndex(uriString, lastModified)) {
-                indexed++
+                step()
                 continue
             }
 
@@ -90,7 +96,7 @@ class ImageIndexer(
                 // onEvent is NOT invoked here: decodeBitmapFromUri already fired it
                 // at the specific failure point (UnknownDimensions or Exception).
                 // Invoking again here would double-count for one corrupt image.
-                indexed++
+                step()
                 continue
             }
 
@@ -125,12 +131,10 @@ class ImageIndexer(
                 bitmap.recycle()
             }
 
-            indexed++
-            if (total > 0 && indexed % 50 == 0) onProgress(indexed, total)
+            step()
         }
 
-        // Always emit the terminal progress update (covers total that is a multiple of 50
-        // AND the re-run case where all items dedup-skip without any per-item emit).
+        // Always emit the terminal progress update (covers a stop between ticks too).
         if (total > 0) onProgress(indexed, total)
         return finished
     }

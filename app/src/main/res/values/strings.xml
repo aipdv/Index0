@@ -830,6 +830,7 @@
     <string name="indexing_status_photo_model_downloading">Downloading the photo model: %1$d%%</string>
     <string name="indexing_status_photo_model_failed">Photo model download failed</string>
     <string name="indexing_status_photo_model_failed_summary">%1$s. Tap to try again.</string>
+    <string name="indexing_status_photos_deferred">Photos will be indexed when the phone has free memory, usually overnight.</string>
     <string name="indexing_status_failed">Indexing stopped: %1$s</string>
     <string name="indexing_status_paused">Paused, resumes when the phone is idle</string>
     <string name="indexing_counts">%1$d documents, %2$d photos</string>

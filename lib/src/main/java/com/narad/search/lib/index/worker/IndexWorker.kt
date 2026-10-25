@@ -1,6 +1,7 @@
 package com.narad.search.lib.index.worker
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
@@ -40,11 +41,26 @@ internal enum class VisionFilesState {
 internal enum class VisionIndexOutcome {
     COMPLETE,
     RETRY,
-    TEXT_ONLY
+    TEXT_ONLY,
+    /** Documents done; the photo pass waits for free memory (next run tries again). */
+    DEFERRED
 }
 
 internal const val MAX_VISION_RETRIES = 3
 const val PHOTOS_NOT_READY_STATUS = "Photos not ready"
+const val PHOTOS_DEFERRED_STATUS = "Photos deferred"
+
+// ponytail: calibration knob. The vision encoder adds ~450 MB on top of the text model (stress
+// test: ~950 MB PSS for both). Tune from the overnight metrics build on real 4 GB phones.
+internal const val PHOTO_PASS_HEADROOM_BYTES = 600L * 1024 * 1024
+
+/** Pure: true when free memory above the low-memory line leaves room to load the vision encoder. */
+internal fun photoPassFits(
+    availBytes: Long,
+    thresholdBytes: Long,
+    lowMemory: Boolean,
+    headroomBytes: Long,
+): Boolean = !lowMemory && availBytes - thresholdBytes >= headroomBytes
 
 internal fun visionUnavailableOutcome(runAttemptCount: Int): VisionIndexOutcome =
     if (runAttemptCount < MAX_VISION_RETRIES) {
@@ -53,8 +69,8 @@ internal fun visionUnavailableOutcome(runAttemptCount: Int): VisionIndexOutcome 
         VisionIndexOutcome.TEXT_ONLY
     }
 
-/** What a finished run reports: the Done stage and whether photos were skipped. */
-internal data class TerminalOutput(val stage: IndexStage.Done, val photosNotReady: Boolean)
+/** What a finished run reports: the Done stage and the [IndexWorker.KEY_STATUS] value when photos were skipped. */
+internal data class TerminalOutput(val stage: IndexStage.Done, val status: String?)
 
 /**
  * Pure: the terminal stage of a run, or null when the run must be retried.
@@ -72,10 +88,11 @@ internal fun terminalOutput(
         VisionIndexOutcome.COMPLETE ->
             TerminalOutput(
                 IndexStage.Done(count, reason = if (count == 0) "Nothing to read yet" else null),
-                photosNotReady = false,
+                status = null,
             )
         VisionIndexOutcome.RETRY -> null
-        VisionIndexOutcome.TEXT_ONLY -> TerminalOutput(IndexStage.Done(count), photosNotReady = true)
+        VisionIndexOutcome.TEXT_ONLY -> TerminalOutput(IndexStage.Done(count), PHOTOS_NOT_READY_STATUS)
+        VisionIndexOutcome.DEFERRED -> TerminalOutput(IndexStage.Done(count), PHOTOS_DEFERRED_STATUS)
     }
 }
 
@@ -559,7 +576,7 @@ class IndexWorker @JvmOverloads constructor(
      * Production indexing path. Only reached when the model file exists or embedderFactory
      * is injected (test path).
      *
-     * Progress is published to WorkManager at every 50-file checkpoint (and at
+     * Progress is published to WorkManager every 50 files or 1 s, see [ProgressTicker] (and at
      * the end). Because [Indexer.onProgress] is a non-suspend lambda but
      * [setProgress] is a suspend function, we use [kotlinx.coroutines.runBlocking]
      * as a pragmatic bridge inside the lambda. The lambda is always called from
@@ -577,8 +594,8 @@ class IndexWorker @JvmOverloads constructor(
         var visionOutcome = VisionIndexOutcome.COMPLETE
         // Track total files indexed across all passes for Done(count).
         var totalIndexed = 0
-        // ponytail: separate counter because ImageIndexer reports CUMULATIVE counts (every
-        // 50 then final), so += would double-count. Assign here, add at Done.
+        // ponytail: separate counter because ImageIndexer reports CUMULATIVE counts (each
+        // tick then final), so += would double-count. Assign here, add at Done.
         var photosIndexed = 0
         // Set to true when isStopped is detected so Paused is not overwritten by Done.
         var wasStopped = false
@@ -805,7 +822,7 @@ class IndexWorker @JvmOverloads constructor(
                     Result.success(
                         androidx.work.Data.Builder()
                             .putAll(terminal.stage.toData())
-                            .apply { if (terminal.photosNotReady) putString(KEY_STATUS, PHOTOS_NOT_READY_STATUS) }
+                            .apply { terminal.status?.let { putString(KEY_STATUS, it) } }
                             .putLong(KEY_STARTED_AT, startedAt)
                             .putLong(KEY_FINISHED_AT, System.currentTimeMillis())
                             .build()
@@ -1020,6 +1037,22 @@ class IndexWorker @JvmOverloads constructor(
                         Log.w(TAG, "No shared EmbeddingModel available, skipping image branch")
                         repository.appendEvent(runId, "photos", "WARN", null, "NoModel", "No shared EmbeddingModel available")
                         throw PhotoPassAborted(VisionIndexOutcome.TEXT_ONLY)
+                    }
+                    // Memory gate: read after the text model is built, so availMem counts it.
+                    // Abort skips the prune below, so photo vectors already indexed stay.
+                    val mem = ActivityManager.MemoryInfo()
+                    (applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
+                        .getMemoryInfo(mem)
+                    val fits = photoPassFits(mem.availMem, mem.threshold, mem.lowMemory, PHOTO_PASS_HEADROOM_BYTES)
+                    Log.i(
+                        TAG,
+                        "Photo memory gate: availMem=${mem.availMem} threshold=${mem.threshold}" +
+                            " lowMemory=${mem.lowMemory} totalMem=${mem.totalMem}" +
+                            " decision=${if (fits) "run" else "defer"}"
+                    )
+                    if (!fits) {
+                        repository.appendEvent(runId, "photos", "INFO", null, null, "photos deferred: low memory")
+                        throw PhotoPassAborted(VisionIndexOutcome.DEFERRED)
                     }
                     try {
                         EG2BitmapImageEncoder(sharedModel, VisionEncoder(visionModelPath))
