@@ -3,6 +3,10 @@ package com.narad.search.lib.index.worker
 import com.narad.search.lib.index.store.IndexDatabase
 import com.narad.search.lib.index.store.IndexRepository
 
+// ponytail: head of the file only (~115 KB of text at 512-char chunks). Text past it is not
+// searchable. Upgrade path: sample chunks spread across the file if long files miss hits.
+internal const val MAX_CHUNKS_PER_FILE = 256
+
 /**
  * Plain, injectable, testable indexing pipeline.
  *
@@ -89,8 +93,9 @@ class Indexer(
                 continue
             }
 
-            // Chunk and embed
-            val chunks = chunkText(text)
+            // Chunk and embed. Only the first MAX_CHUNKS_PER_FILE chunks: a 1 MB log or a long
+            // DOCX made ~2,300 chunks and held the whole run for minutes (stress test, 2026-10-25).
+            val chunks = chunkText(text).take(MAX_CHUNKS_PER_FILE)
             val chunkData = mutableListOf<Triple<Int, FloatArray, String>>()
             for ((chunkIndex, chunkContent) in chunks.withIndex()) {
                 // Large files: stop mid-file too. The file stays unmarked, so the next run redoes it.
