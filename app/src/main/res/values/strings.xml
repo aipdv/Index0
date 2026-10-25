@@ -832,6 +832,7 @@
     <string name="indexing_model_verifying">Checking the download</string>
     <string name="indexing_model_ready">Ready. Search runs on this phone.</string>
     <string name="indexing_model_failed">Download failed: %1$s. Tap to try again.</string>
+    <string name="indexing_download_failed_connection">Check your connection</string>
     <string name="indexing_terms_title">Download the search model?</string>
     <string name="indexing_terms_message">Index0 downloads EmbeddingGemma from Hugging Face, about 540 MB, once. Your files never leave this phone. The model is provided under the Gemma Terms of Use.</string>
     <string name="indexing_terms_link">Gemma Terms of Use</string>

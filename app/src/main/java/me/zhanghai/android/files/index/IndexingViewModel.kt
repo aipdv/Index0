@@ -123,6 +123,17 @@ internal fun photoModelStatus(imagesOn: Boolean, state: ProvisionState): PhotoMo
     }
 }
 
+/**
+ * Pure: the part of a model download failure that is safe to show, or null for the plain
+ * "check your connection" text. Raw reasons carry a "[file]" prefix and exception text.
+ */
+internal fun plainDownloadFailure(reason: String): String? {
+    // ponytail: matches our own lib text (ModelProvisioner U8); add a typed reason to
+    // ProvisionState.Failed if more cases appear.
+    val at = reason.indexOf("Not enough free space")
+    return if (at >= 0) reason.substring(at).trimEnd('.') else null
+}
+
 /** Progress of one type row: [total] is null when only an indexed count is known. */
 internal data class TypeProgress(val done: Int, val total: Int?)
 

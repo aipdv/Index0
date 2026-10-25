@@ -411,4 +411,18 @@ class IndexingViewModelTest {
         assertNull(photoModelStatus(false, ProvisionState.NotStarted))
         assertNull(photoModelStatus(false, ProvisionState.Failed("no space")))
     }
+
+    @Test fun plainDownloadFailure_keepsFreeSpace_hidesTechnicalText() {
+        assertEquals(
+            "Not enough free space: need 620 MB, have 310 MB",
+            plainDownloadFailure("Not enough free space: need 620 MB, have 310 MB"),
+        )
+        assertEquals(
+            "Not enough free space: need 620 MB, have 310 MB",
+            plainDownloadFailure("[model.onnx] Install failed: Not enough free space: need 620 MB, have 310 MB"),
+        )
+        assertNull(plainDownloadFailure("[vision_encoder_quantized.onnx_data] Install failed: Software caused connection abort"))
+        assertNull(plainDownloadFailure("[model.onnx] Install failed: Unable to resolve host \"huggingface.co\""))
+        assertNull(plainDownloadFailure(""))
+    }
 }
