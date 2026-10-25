@@ -17,7 +17,7 @@
 
         <intent
             android:action="me.zhanghai.android.files.intent.action.VIEW_DOWNLOADS"
-            android:targetPackage="com.aipdv.index0"
+            android:targetPackage="com.aipdv.bf"
             android:targetClass="me.zhanghai.android.files.filelist.FileListActivity" />
     </shortcut>
 
@@ -28,7 +28,7 @@
 
         <intent
             android:action="me.zhanghai.android.files.intent.action.MANAGE_FTP_SERVER"
-            android:targetPackage="com.aipdv.index0"
+            android:targetPackage="com.aipdv.bf"
             android:targetClass="me.zhanghai.android.files.ftpserver.FtpServerActivity" />
     </shortcut>
 </shortcuts>
