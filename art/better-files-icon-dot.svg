@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Launcher icon concept: flat folder with a red badge and white plus. 108 x 108 adaptive grid;
+     all artwork stays inside the 66 dp safe circle (center 54,54, radius 33). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="#FFFFFF"/>
+  <!-- Folder back with tab -->
+  <path d="M35 35 H45.5 a3 3 0 0 1 2.12 0.88 L52 40 H71 a5 5 0 0 1 5 5 V52 H30 V40 a5 5 0 0 1 5 -5 Z" fill="#1557C0"/>
+  <!-- Folder front -->
+  <rect x="30" y="44" width="46" height="30" rx="5" fill="#2B7DF0"/>
+  <!-- Badge: white ring separates it from the folder -->
+  <circle cx="71" cy="41" r="11.5" fill="#FFFFFF"/>
+  <circle cx="71" cy="41" r="9.5" fill="#E53935"/>
+  <rect x="69.6" y="35.5" width="2.8" height="11" rx="1.4" fill="#FFFFFF"/>
+  <rect x="65.5" y="39.6" width="11" height="2.8" rx="1.4" fill="#FFFFFF"/>
+</svg>
