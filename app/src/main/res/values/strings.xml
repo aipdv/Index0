@@ -819,6 +819,7 @@
     <string name="indexing_status_finding">Finding %1$s</string>
     <string name="indexing_status_reading">Reading %1$s: %2$d of %3$d</string>
     <string name="indexing_status_done">Up to date</string>
+    <string name="indexing_status_documents_done">Documents up to date</string>
     <string name="indexing_status_photo_model_missing">Photos need a 195 MB download</string>
     <string name="indexing_status_photo_model_downloading">Downloading the photo model: %1$d%%</string>
     <string name="indexing_status_photo_model_failed">Photo model download failed</string>
