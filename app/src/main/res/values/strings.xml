@@ -858,6 +858,9 @@
     <string name="indexing_reindex_summary">Deletes the index and reads every file again</string>
     <string name="indexing_overnight_title">Overnight indexing</string>
     <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low</string>
+    <string name="indexing_heat_notice">Indexing is in progress. Your phone may get warm while it reads your files. This is normal and stops when indexing finishes.</string>
+    <string name="settings_search_title">Search</string>
+    <string name="settings_indexing_summary">Meaning search, search model, overnight indexing</string>
     <string name="indexing_excluded_category">Do not index</string>
     <string name="indexing_excluded_defaults">The Android folder and hidden folders are always skipped</string>
     <string name="indexing_excluded_add">Add folder</string>
