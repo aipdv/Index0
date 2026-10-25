@@ -228,7 +228,7 @@ internal fun buildDiagnostics(
     events: List<IndexEvent>,
     names: Map<String, String>,
 ): String = buildString {
-    appendLine("Narad indexing diagnostics")
+    appendLine("Indexing diagnostics")
     appendLine("Stage: ${stageName(status.stage)}")
     appendLine("Running: ${status.running}")
     status.lastRunAt?.let { appendLine("Last run: ${isoTime(it)}") }
