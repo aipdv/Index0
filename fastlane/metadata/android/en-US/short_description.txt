@@ -1,1 +1,1 @@
-Open source Material Design file manager
+File manager with meaning search for documents and photos, on your phone
