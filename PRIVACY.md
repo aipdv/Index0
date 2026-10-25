@@ -83,7 +83,7 @@ Builds made without an analytics key (for example, builds from source) have no a
 ## Data on your phone
 
 - The search index and the downloaded models stay on your phone. They are excluded from Android backup.
-- Indexing keeps a short log of its own runs on your phone: the stage, counts, and for a file that failed, its name and the error type. The log keeps at most 7 days and 500 entries. It is excluded from Android backup and is never sent. It leaves your phone only if you copy the diagnostics yourself.
+- Indexing keeps a short log of its own runs on your phone: the stage, counts, the battery level, whether the phone was charging or idle, free memory, and for a file that failed, its name and the error type. The log keeps at most 7 days and 500 entries. It is excluded from Android backup and is never sent.
 - App settings can be included in Android backup. These settings include saved network storage logins and your analytics choice.
 
 ## Children
