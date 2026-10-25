@@ -12,11 +12,15 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.narad.search.lib.device.DeviceTierDetector
 import com.narad.search.lib.index.enumeration.ExcludedFolders
 import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.service.BootReceiver
 import com.narad.search.lib.index.worker.IndexStage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.zhanghai.android.files.R
 import me.zhanghai.android.files.app.Analytics
 import me.zhanghai.android.files.filelist.FileListActivity
@@ -53,6 +57,8 @@ class IndexingFragment : PreferenceFragmentCompat() {
         statusPreference = Preference(context).apply {
             isSelectable = false
             isIconSpaceReserved = false
+            // Selectable only while the photo model is missing or failed (bindStatus).
+            setOnPreferenceClickListener { IndexEngine.fetchPhotoModel(userTap = true); true }
         }
         modelPreference = Preference(context).apply {
             setTitle(R.string.indexing_model_title)
@@ -106,14 +112,25 @@ class IndexingFragment : PreferenceFragmentCompat() {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.uiState.collect { bindStatus(it) } }
+                launch {
+                    val appContext = requireContext().applicationContext
+                    // Binder call plus reflection: off the main thread, once per view.
+                    val imagesOn = withContext(Dispatchers.IO) {
+                        DeviceTierDetector.detect(appContext).imageEmbeddingEnabled
+                    }
+                    combine(viewModel.uiState, IndexEngine.visionProvisioner.stateFlow) { state, vision ->
+                        state to photoModelStatus(imagesOn, vision)
+                    }.collect { (state, photo) -> bindStatus(state, photo) }
+                }
                 launch { IndexEngine.provisioner.stateFlow.collect { bindModel(it) } }
             }
         }
     }
 
-    private fun bindStatus(state: IndexingUiState) {
+    private fun bindStatus(state: IndexingUiState, photo: PhotoModelStatus?) {
         val status = state.status
+        // "Up to date" is false while a photo search phone has no photo model.
+        val photoOnDone = photo.takeIf { status.stage is IndexStage.Done }
         statusPreference.title = when (val stage = status.stage) {
             null -> getString(
                 if (status.running) R.string.indexing_status_getting_ready else R.string.indexing_status_idle
@@ -123,18 +140,28 @@ class IndexingFragment : PreferenceFragmentCompat() {
             is IndexStage.Finding -> getString(R.string.indexing_status_finding, stage.kind)
             is IndexStage.Reading ->
                 getString(R.string.indexing_status_reading, stage.kind, stage.done, stage.total)
-            is IndexStage.Done -> getString(R.string.indexing_status_done)
+            is IndexStage.Done -> when (photoOnDone) {
+                null -> getString(R.string.indexing_status_done)
+                PhotoModelStatus.Missing -> getString(R.string.indexing_status_photo_model_missing)
+                is PhotoModelStatus.Downloading ->
+                    getString(R.string.indexing_status_photo_model_downloading, photoOnDone.percent)
+                is PhotoModelStatus.Failed -> getString(R.string.indexing_status_photo_model_failed)
+            }
             is IndexStage.Failed -> getString(R.string.indexing_status_failed, stage.reason)
             IndexStage.Paused -> getString(R.string.indexing_status_paused)
         }
         val documents = state.documentCount ?: 0
         val photos = state.photoCount ?: 0
-        statusPreference.summary = status.lastRunAt?.let {
+        statusPreference.summary = if (photoOnDone is PhotoModelStatus.Failed) {
+            getString(R.string.indexing_status_photo_model_failed_summary, photoOnDone.reason)
+        } else status.lastRunAt?.let {
             getString(
                 R.string.indexing_counts_last_run, documents, photos,
                 DateUtils.getRelativeTimeSpanString(it)
             )
         } ?: getString(R.string.indexing_counts, documents, photos)
+        statusPreference.isSelectable =
+            photoOnDone == PhotoModelStatus.Missing || photoOnDone is PhotoModelStatus.Failed
         startPreference.isEnabled = !status.running
         reindexPreference.isEnabled = !status.running
     }
