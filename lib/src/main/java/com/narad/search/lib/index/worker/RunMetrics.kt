@@ -65,7 +65,10 @@ internal fun docResult(chunks: Int, warned: Boolean): String = when {
 
 internal const val METRICS_FILE_CAP_BYTES = 10L * 1024 * 1024
 
-const val METRICS_TSV_HEADER = "ts_utc\trun_id\tkind\tname\ttype\tsize_bytes\tms\tchunks\tresult\tpss_kb"
+// v2 adds extract_ms and embed_ms at the end, so readers that go by position still work.
+// Documents: extract = text extraction, embed = text embedding. Photos: extract = decode, embed = encode.
+const val METRICS_TSV_HEADER =
+    "ts_utc\trun_id\tkind\tname\ttype\tsize_bytes\tms\tchunks\tresult\tpss_kb\textract_ms\tembed_ms"
 
 /** Append-only, outside the event prune and outside backups. */
 fun metricsFile(context: Context): File = File(context.noBackupFilesDir, "metrics/index-metrics.tsv")
@@ -82,9 +85,11 @@ internal fun tsvRow(
     chunks: Int? = null,
     result: String? = null,
     pssKb: Long? = null,
+    extractMs: Long? = null,
+    embedMs: Long? = null,
 ): String = listOf(
     Instant.ofEpochMilli(tsMs).toString(), runId, kind, name?.substringAfterLast('/'), type,
-    sizeBytes, ms, chunks, result, pssKb,
+    sizeBytes, ms, chunks, result, pssKb, extractMs, embedMs,
 ).joinToString("\t") { cell ->
     cell?.toString()?.replace(Regex("[\t\r\n]"), " ")?.ifEmpty { null } ?: "-"
 }
@@ -123,8 +128,10 @@ internal class RunMetrics(
 
     fun pss(point: String) = append(tsvRow(now(), runId, "pss", name = point, pssKb = Debug.getPss()))
 
-    fun file(name: String?, type: String?, sizeBytes: Long?, ms: Long, chunks: Int?, result: String) =
-        append(tsvRow(now(), runId, "file", name, type, sizeBytes, ms, chunks, result))
+    fun file(
+        name: String?, type: String?, sizeBytes: Long?, ms: Long, chunks: Int?, result: String,
+        extractMs: Long, embedMs: Long,
+    ) = append(tsvRow(now(), runId, "file", name, type, sizeBytes, ms, chunks, result, extractMs = extractMs, embedMs = embedMs))
 }
 
 /** Display name and size of a content URI (or a plain path). Nulls when unknown. */

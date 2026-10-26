@@ -41,8 +41,10 @@ class ImageIndexer(
     private val context: Context,
     // ponytail: callback fires alongside Log.w; null default keeps existing callers unchanged
     private val onEvent: ((uri: String, errorClass: String, message: String) -> Unit)? = null,
-    // Called after each photo that was read (not for unchanged photos): uri, ms, result.
-    private val onPhotoDone: (uri: String, ms: Long, result: String) -> Unit = { _, _, _ -> }
+    // Called after each photo that was read (not for unchanged photos): uri, total ms, result,
+    // ms in the decode, ms in the encoder.
+    private val onPhotoDone: (uri: String, ms: Long, result: String, decodeMs: Long, encodeMs: Long) -> Unit =
+        { _, _, _, _, _ -> }
 ) {
 
     companion object {
@@ -92,10 +94,14 @@ class ImageIndexer(
             }
 
             val photoStart = System.nanoTime()
-            fun photoDone(result: String) = onPhotoDone(uriString, (System.nanoTime() - photoStart) / 1_000_000, result)
+            var decodeMs = 0L
+            var encodeMs = 0L
+            fun photoDone(result: String) =
+                onPhotoDone(uriString, (System.nanoTime() - photoStart) / 1_000_000, result, decodeMs, encodeMs)
 
             // Decode the bitmap with bounds-decode + inSampleSize (OOM guard for 48 MP photos).
             val bitmap: Bitmap? = decodeBitmapFromUri(uriString)
+            decodeMs = (System.nanoTime() - photoStart) / 1_000_000
             if (bitmap == null) {
                 Log.w(TAG, "Failed to decode bitmap for $uriString - skipping")
                 // onEvent is NOT invoked here: decodeBitmapFromUri already fired it
@@ -110,7 +116,9 @@ class ImageIndexer(
             var result = RESULT_INDEXED
             try {
                 // Encode via EG2 vision encoder + shared LM session.
+                val encodeStart = System.nanoTime()
                 val vector: FloatArray = imageEncoder.encode(bitmap)
+                encodeMs = (System.nanoTime() - encodeStart) / 1_000_000
 
                 // Persist image vector.
                 repository.upsertImageVector(
