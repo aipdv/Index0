@@ -3,6 +3,7 @@ package me.zhanghai.android.files.index
 import androidx.work.Data
 import androidx.work.WorkInfo
 import androidx.work.WorkInfo.State
+import com.narad.search.lib.index.enumeration.ExcludedFolders
 import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.store.IndexEvent
 import com.narad.search.lib.index.worker.IndexStage
@@ -198,6 +199,42 @@ class IndexingViewModelTest {
         assertEquals("Exits: 1", tail[0])
         assertEquals("Exits: 1970-01-01T00:00:00Z reason=3 (LOW_MEMORY) importance=400 pss=900000 rss=1000000 lmk kill", tail[1])
         assertEquals("Exits: 0", metricsExportTail(emptyList()).trimEnd())
+    }
+
+    @Test
+    fun `files by type counts types, pdf names and folder-rule drops, and writes no name or path`() {
+        val root = "/storage/emulated/0"
+        val rows = buildList {
+            add(MediaFileRow(null, "DCIM", "$root/DCIM", folder = true))
+            repeat(3) { add(MediaFileRow("text/plain", "secret$it.txt", "$root/Documents/secret$it.txt", false)) }
+            add(MediaFileRow("text/plain", "h.txt", "$root/Documents/.hidden/h.txt", false))
+            add(MediaFileRow("application/pdf", "Report.pdf", "$root/Android/data/x/Report.pdf", false))
+            add(MediaFileRow(null, "Scan.PDF", "$root/Download/Scan.PDF", false))
+            add(MediaFileRow("application/octet-stream", "bill.pdf", "$root/Download/bill.pdf", false))
+            add(MediaFileRow("image/jpeg", "a.jpg", "$root/DCIM/a.jpg", false))
+            add(MediaFileRow("image/png", "b.png", "$root/DCIM/b.png", false))
+        }
+        val out = filesByType(rows.asSequence(), setOf("application/pdf", "text/plain"), top = 2) {
+            ExcludedFolders.isExcluded(it, emptyList())
+        }
+        assertEquals(
+            listOf(
+                "Files by type: files=9 folders=1 types=6",
+                "Files by type: 4 text/plain",
+                // Top 2 by count, then key; null and octet-stream always stay.
+                "Files by type: 1 application/octet-stream",
+                "Files by type: 1 null",
+                "Files by type: 3 other (3 types)",
+                "Files by type: pdf by name, not application/pdf: 2 application/octet-stream=1 null=1",
+                // The hidden folder and Android/ drop 2 of the 5 indexed-type files.
+                "Files by type: indexed doc types=5 dropped by the folder rule=2 kept=3",
+                "",
+            ),
+            out.lines(),
+        )
+        listOf("secret", "h.txt", "Report", "Scan", "bill", "a.jpg", "/storage", "DCIM").forEach {
+            assertFalse(it, out.contains(it))
+        }
     }
 
     @Test
