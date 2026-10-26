@@ -11,9 +11,21 @@ class ExcludedFoldersTest {
 
     @Test
     fun `android folder is excluded by default, any case`() {
-        assertTrue(excluded("/storage/emulated/0/Android/media/x.pdf"))
-        assertTrue(excluded("/storage/emulated/0/android/Media/x.pdf"))
-        assertTrue(excluded("/storage/1A2B-3C4D/Android/x.jpg"))
+        assertTrue(excluded("/storage/emulated/0/Android/data/com.x/files/x.pdf"))
+        assertTrue(excluded("/storage/emulated/0/android/OBB/com.x/main.obb"))
+        assertTrue(excluded("/storage/emulated/0/Android/x.pdf"))
+        assertTrue(excluded("/storage/1A2B-3C4D/Android/data/x.jpg"))
+        assertTrue(excluded("/storage/emulated/0/Android/mediaX/x.pdf"))
+    }
+
+    @Test
+    fun `android media is kept, so WhatsApp and Telegram documents are indexed`() {
+        assertFalse(excluded("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/bill.pdf"))
+        assertFalse(excluded("/storage/emulated/0/android/Media/org.telegram.messenger/Telegram/Telegram Documents/a.pdf"))
+        assertFalse(excluded("/storage/1A2B-3C4D/Android/media/x.pdf"))
+        // Hidden folders inside it still go (the dot rule).
+        assertTrue(excluded("/storage/emulated/0/Android/media/x/.hidden/a.pdf"))
+        assertTrue(excluded("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses/s.jpg"))
     }
 
     @Test
