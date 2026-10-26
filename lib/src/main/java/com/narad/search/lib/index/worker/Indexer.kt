@@ -3,9 +3,10 @@ package com.narad.search.lib.index.worker
 import com.narad.search.lib.index.store.IndexDatabase
 import com.narad.search.lib.index.store.IndexRepository
 
-// ponytail: head of the file only (~115 KB of text at 512-char chunks). Text past it is not
-// searchable. Upgrade path: sample chunks spread across the file if long files miss hits.
-internal const val MAX_CHUNKS_PER_FILE = 256
+// ponytail: head of the file only (~14 KB of text at 512-char chunks): the first pages are enough
+// to find a file, and a 32-chunk cap keeps the first index fast. Text past it is not searchable.
+// Upgrade path: deepen later (a second pass over long files, or chunks spread across the file).
+internal const val MAX_CHUNKS_PER_FILE = 32
 
 /**
  * When to publish progress: at every [everyFiles]-th file, or when [everyMs] passed since the
