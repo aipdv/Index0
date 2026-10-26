@@ -3,7 +3,6 @@ package me.zhanghai.android.files.index
 import android.app.ActivityManager
 import android.content.ContentResolver
 import android.content.Context
-import android.mtp.MtpConstants
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -318,8 +317,8 @@ private const val OCTET_STREAM = "application/octet-stream"
 internal fun filesByType(
     rows: Sequence<MediaFileRow>,
     docTypes: Set<String>,
-    isExcluded: (path: String) -> Boolean,
     top: Int = 25,
+    isExcluded: (path: String) -> Boolean,
 ): String {
     var files = 0
     var folders = 0
@@ -360,14 +359,18 @@ internal fun filesByType(
 private fun queryFilesByType(context: Context): String = try {
     val userExcluded = ExcludedFolders.userFolders(context)
     val projection = arrayOf(
-        MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME,
-        MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.FORMAT,
+        MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.DATA,
     )
     context.contentResolver.query(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), projection, null, null, null)
         ?.use { c ->
+            // ponytail: FileColumns.FORMAT is hidden in the SDK, so a folder is a null-MIME row whose path
+            // is a directory (all-files access). One stat per null-MIME row, export only.
             val rows = generateSequence {
-                if (!c.moveToNext()) null else
-                    MediaFileRow(c.getString(0), c.getString(1), c.getString(2), c.getInt(3) == MtpConstants.FORMAT_ASSOCIATION)
+                if (!c.moveToNext()) null else {
+                    val mime = c.getString(0)
+                    val path = c.getString(2)
+                    MediaFileRow(mime, c.getString(1), path, mime == null && path != null && File(path).isDirectory)
+                }
             }
             filesByType(rows, MediaStoreEnumerator.DOCUMENT_MIME_TYPES) { ExcludedFolders.isExcluded(it, userExcluded) }
         } ?: "Files by type: not available\n"
