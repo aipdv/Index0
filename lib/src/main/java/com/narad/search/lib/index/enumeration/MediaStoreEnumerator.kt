@@ -122,7 +122,9 @@ class MediaStoreEnumerator {
             projection,
             selection,
             selectionArgs,
-            null  // sort order: none - dedup handles ordering
+            // Newest first: a long first index makes recent files searchable early.
+            // Nothing depends on the order (dedup per file, prune uses sets).
+            "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
         )?.use { cursor ->
             val idCol       = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val mimeCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
@@ -201,7 +203,9 @@ class MediaStoreEnumerator {
             projection,
             selection,
             selectionArgs,
-            null  // sort order: none - dedup handles ordering
+            // Newest first: a long first index makes recent files searchable early.
+            // Nothing depends on the order (dedup per file, prune uses sets).
+            "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
         )?.use { cursor ->
             val idCol       = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val mimeCol     = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)

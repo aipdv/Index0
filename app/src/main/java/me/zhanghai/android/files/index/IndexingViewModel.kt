@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.narad.search.lib.index.enumeration.ExcludedFolders
+import com.narad.search.lib.index.enumeration.MediaStoreEnumerator
 import com.narad.search.lib.index.provision.ProvisionState
 import com.narad.search.lib.index.service.BootReceiver
 import com.narad.search.lib.index.service.IndexService
@@ -302,6 +304,80 @@ internal fun metricsExportTail(exits: List<ExitLine>?): String = buildString {
     }
 }
 
+/** One MediaStore Files row for [filesByType]. [name] and [path] are read, never written out. */
+internal data class MediaFileRow(val mime: String?, val name: String?, val path: String?, val folder: Boolean)
+
+private const val OCTET_STREAM = "application/octet-stream"
+
+/**
+ * Pure: part 5, counts only. Why the phone shows fewer documents than it has: the MIME types
+ * MediaStore gives (top [top], plus null and octet-stream always), .pdf names under another type,
+ * and the indexed document types that the folder rule drops ("kept" must equal the run line's docs total).
+ */
+internal fun filesByType(
+    rows: Sequence<MediaFileRow>,
+    docTypes: Set<String>,
+    top: Int = 25,
+    isExcluded: (path: String) -> Boolean,
+): String {
+    var files = 0
+    var folders = 0
+    var docs = 0
+    var dropped = 0
+    val byMime = HashMap<String, Int>()
+    val pdfByName = HashMap<String, Int>()
+    for (row in rows) {
+        if (row.folder) { folders++; continue }
+        files++
+        val mime = row.mime ?: "null"
+        byMime.merge(mime, 1, Int::plus)
+        if (row.name?.endsWith(".pdf", ignoreCase = true) == true && row.mime != "application/pdf") {
+            pdfByName.merge(mime, 1, Int::plus)
+        }
+        if (row.mime in docTypes) {
+            docs++
+            if (row.path != null && isExcluded(row.path)) dropped++
+        }
+    }
+    val byCount = compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
+    val sorted = byMime.entries.sortedWith(byCount)
+    val (shown, rest) = sorted.withIndex()
+        .partition { (i, e) -> i < top || e.key == "null" || e.key == OCTET_STREAM }
+    return buildString {
+        appendLine("Files by type: files=$files folders=$folders types=${sorted.size}")
+        shown.forEach { (_, e) -> appendLine("Files by type: ${e.value} ${e.key}") }
+        if (rest.isNotEmpty()) appendLine("Files by type: ${rest.sumOf { it.value.value }} other (${rest.size} types)")
+        appendLine(
+            "Files by type: pdf by name, not application/pdf: ${pdfByName.values.sum()}" +
+                pdfByName.entries.sortedWith(byCount).joinToString("") { " ${it.key}=${it.value}" }
+        )
+        appendLine("Files by type: indexed doc types=$docs dropped by the folder rule=$dropped kept=${docs - dropped}")
+    }
+}
+
+/** Part 5 from MediaStore. A failed query must not fail the whole export. */
+private fun queryFilesByType(context: Context): String = try {
+    val userExcluded = ExcludedFolders.userFolders(context)
+    val projection = arrayOf(
+        MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.DATA,
+    )
+    context.contentResolver.query(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), projection, null, null, null)
+        ?.use { c ->
+            // ponytail: FileColumns.FORMAT is hidden in the SDK, so a folder is a null-MIME row whose path
+            // is a directory (all-files access). One stat per null-MIME row, export only.
+            val rows = generateSequence {
+                if (!c.moveToNext()) null else {
+                    val mime = c.getString(0)
+                    val path = c.getString(2)
+                    MediaFileRow(mime, c.getString(1), path, mime == null && path != null && File(path).isDirectory)
+                }
+            }
+            filesByType(rows, MediaStoreEnumerator.DOCUMENT_MIME_TYPES) { ExcludedFolders.isExcluded(it, userExcluded) }
+        } ?: "Files by type: not available\n"
+} catch (e: Exception) {
+    "Files by type: not available (${e.javaClass.simpleName})\n"
+}
+
 /** ApplicationExitInfo.REASON_* names, so the PO can read a low-memory kill at a glance. */
 private fun exitReasonName(reason: Int): String = when (reason) {
     1 -> "EXIT_SELF"
@@ -355,6 +431,7 @@ internal suspend fun writeMetricsExport(context: Context, state: IndexingUiState
         val tsv = metricsFile(context)
         if (tsv.exists()) tsv.bufferedReader().use { it.copyTo(w) } else w.write(METRICS_TSV_HEADER + "\n")
         w.write(metricsExportTail(exits))
+        w.write(queryFilesByType(context))
     }
     out
 }
