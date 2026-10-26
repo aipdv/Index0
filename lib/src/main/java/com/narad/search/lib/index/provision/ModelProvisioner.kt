@@ -105,10 +105,20 @@ sealed class ProvisionState {
  *
  * The tuned ONNX graph (`model_quantized.onnx`, 498 KB) ships IN THE APK under
  * `assets/models/embeddinggemma-2/model_quantized.onnx` and is copied to device
- * storage on first provision. Only the large weight file and the tokenizer are
+ * storage on first provision. Only the large weight file (174 MB) and the tokenizer are
  * downloaded from Hugging Face.
  *
- * Pinned HF revision: `daa72c51243991dfcaf9f9137d2c573d8f7790c0` (tuned graph commit).
+ * 4-bit (q4) weights, accuracy_level=4, saved under the q8 file names: the graph is upstream
+ * `onnx/model_q4.onnx` with `accuracy_level=4` on every MatMulNBits node and its external-data
+ * location renamed to `model_quantized.onnx_data`. The 8-bit graph had no fast kernel on ARMv8.0
+ * phones without dot product (e.g. Snapdragon 665): ORT dequantized the whole weight matrix on
+ * every call. The 4-bit graph has a packed NEON path there.
+ *
+ * ponytail: the file names say "quantized" (they were q8), but the files are q4. Keeping the
+ * names lets the size-only presence check replace the q8 files in place. Rename only with a
+ * cleanup of the old files.
+ *
+ * Pinned HF revision: `daa72c51243991dfcaf9f9137d2c573d8f7790c0`.
  */
 object EmbeddingGemma2Manifest {
     const val MODEL_ID = "embeddinggemma-2"
@@ -125,16 +135,16 @@ object EmbeddingGemma2Manifest {
             ModelFile(
                 url          = "",  // unused - assetPath takes precedence
                 relativeDest = "models/embeddinggemma-2/model_quantized.onnx",
-                sha256       = "4bd9649778ba6f6460858103b138df6a70ddb22fb4c6ac844fe6fd20e56d691c",
-                sizeBytes    = 498_523L,
+                sha256       = "8c6e7cc7953cebd24a95099118e02e192223b2adf03328372acc1a849cb8839e",
+                sizeBytes    = 498_397L,
                 assetPath    = "models/embeddinggemma-2/model_quantized.onnx"
             ),
             // Large weight file: downloaded from HuggingFace.
             ModelFile(
-                url          = "onnx/model_quantized.onnx_data",
+                url          = "onnx/model_q4.onnx_data",
                 relativeDest = "models/embeddinggemma-2/model_quantized.onnx_data",
-                sha256       = "278a7ff1248c3618e4bd11a607fc54f7bdc7778854230f3956d3f86bd9db4f3b",
-                sizeBytes    = 313_724_928L
+                sha256       = "c3975f2d1ab7a1878ae31a7d7a9b7804a827aff3800b60dfceafce21cac3df49",
+                sizeBytes    = 174_028_800L
             ),
             // Tokenizer: downloaded from HuggingFace.
             ModelFile(
@@ -155,7 +165,7 @@ object EmbeddingGemma2Manifest {
  * Vision encoder manifest for EmbeddingGemma 2.
  *
  * Provisioned SEPARATELY from the text model ([EmbeddingGemma2Manifest]) so that
- * Tier C phones (where `imageEmbeddingEnabled=false`) never download the 195 MB
+ * Tier C phones (where `imageEmbeddingEnabled=false`) never download the 109 MB
  * weight file. The call-site gates on [CapabilityFlags.imageEmbeddingEnabled].
  *
  * The **device layout** is FLAT, co-located with the LM files:
@@ -163,8 +173,9 @@ object EmbeddingGemma2Manifest {
  *
  * The graph (165 KB) ships IN THE APK under
  * `assets/models/embeddinggemma-2/vision_encoder_quantized.onnx`.
- * The weight file (195 MB) is downloaded from Hugging Face at the same pinned revision
- * as the LM data.
+ * The weight file (109 MB) is downloaded from Hugging Face at the same pinned revision
+ * as the LM data. 4-bit (q4), accuracy_level=4, saved under the q8 file names, like the text
+ * model (see [EmbeddingGemma2Manifest]).
  */
 object EmbeddingGemma2VisionManifest {
     /** Same model id as the text model - both live in the same directory. */
@@ -178,16 +189,16 @@ object EmbeddingGemma2VisionManifest {
             ModelFile(
                 url          = "",   // unused - assetPath takes precedence
                 relativeDest = "models/embeddinggemma-2/vision_encoder_quantized.onnx",
-                sha256       = "14a8e62f96456c7d42091fe73b5d5c24b8798cde92a5f82411e15e6c0d628259",
-                sizeBytes    = 165_094L,
+                sha256       = "d05b3dceff427051c4c4b5af53c5e76a83aa04a0e016b64fcdd9815bf782831b",
+                sizeBytes    = 164_877L,
                 assetPath    = "models/embeddinggemma-2/vision_encoder_quantized.onnx"
             ),
             // Large vision weight file: downloaded from HuggingFace (pinned revision).
             ModelFile(
-                url          = "onnx/vision_encoder_quantized.onnx_data",
+                url          = "onnx/vision_encoder_q4.onnx_data",
                 relativeDest = "models/embeddinggemma-2/vision_encoder_quantized.onnx_data",
-                sha256       = "3dabd69c0a36e9a8771ad82030dde74daa5a0e02b7047a5d3f3382b1137bab89",
-                sizeBytes    = 195_228_672L
+                sha256       = "0a9d6c927334f152a33dd90874f65d6ea5228999abe6a450d3f7813677fa704c",
+                sizeBytes    = 108_957_696L
             )
         )
     )

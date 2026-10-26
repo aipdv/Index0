@@ -819,7 +819,7 @@
     <string name="indexing_status_reading">Reading %1$s: %2$d of %3$d</string>
     <string name="indexing_status_done">Up to date</string>
     <string name="indexing_status_documents_done">Documents up to date</string>
-    <string name="indexing_status_photo_model_missing">Photos need a 195 MB download</string>
+    <string name="indexing_status_photo_model_missing">Photos need a 110 MB download</string>
     <string name="indexing_status_photo_model_downloading">Downloading the photo model: %1$d%%</string>
     <string name="indexing_status_photo_model_failed">Photo model download failed</string>
     <string name="indexing_status_photo_model_failed_summary">%1$s. Tap to try again.</string>
@@ -833,14 +833,14 @@
     <string name="indexing_counts">%1$d documents, %2$d photos</string>
     <string name="indexing_counts_last_run">%1$d documents, %2$d photos. Last run %3$s</string>
     <string name="indexing_model_title">Search model</string>
-    <string name="indexing_model_not_downloaded">Download about 540 MB once to search by meaning. Everything stays on this phone. Uses the Gemma Terms of Use.</string>
+    <string name="indexing_model_not_downloaded">Download about 320 MB once to search by meaning. Everything stays on this phone. Uses the Gemma Terms of Use.</string>
     <string name="indexing_model_downloading">Downloading %1$d%%</string>
     <string name="indexing_model_verifying">Checking the download</string>
     <string name="indexing_model_ready">Ready. Search runs on this phone.</string>
     <string name="indexing_model_failed">Download failed: %1$s. Tap to try again.</string>
     <string name="indexing_download_failed_connection">Check your connection</string>
     <string name="indexing_terms_title">Download the search model?</string>
-    <string name="indexing_terms_message">Index0 downloads EmbeddingGemma from Hugging Face, about 540 MB, once. Your files never leave this phone. The model is provided under the Gemma Terms of Use.</string>
+    <string name="indexing_terms_message">Index0 downloads EmbeddingGemma from Hugging Face, about 320 MB, once. Your files never leave this phone. The model is provided under the Gemma Terms of Use.</string>
     <string name="indexing_terms_link">Gemma Terms of Use</string>
     <string name="indexing_terms_accept">Accept and download</string>
     <string name="indexing_start_title">Index now</string>
@@ -852,7 +852,7 @@
     <string name="indexing_overnight_title">Overnight indexing</string>
     <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low</string>
     <string name="indexing_excluded_category">Do not index</string>
-    <string name="indexing_excluded_defaults">The Android folder and hidden folders are always skipped</string>
+    <string name="indexing_excluded_defaults">The Android folder (except Android/media) and hidden folders are always skipped</string>
     <string name="indexing_excluded_add">Add folder</string>
     <string name="indexing_excluded_remove_title">Index this folder again?</string>
     <string name="indexing_excluded_remove">Index again</string>

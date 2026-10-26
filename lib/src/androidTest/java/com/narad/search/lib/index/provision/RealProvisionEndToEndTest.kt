@@ -79,9 +79,9 @@ class RealProvisionEndToEndTest {
         private const val REAL_TOKENIZER_PATH = "/data/local/tmp/eg2/tokenizer.json"
 
         // SHA-256 and sizes from EmbeddingGemma2Manifest (M1 locked decisions).
-        private const val REAL_ONNX_SHA256      = "4bd9649778ba6f6460858103b138df6a70ddb22fb4c6ac844fe6fd20e56d691c"
+        private const val REAL_ONNX_SHA256      = "8c6e7cc7953cebd24a95099118e02e192223b2adf03328372acc1a849cb8839e"
         private const val REAL_TOKENIZER_SHA256 = "4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4"
-        private const val REAL_ONNX_SIZE        = 498_523L
+        private const val REAL_ONNX_SIZE        = 498_397L
         private const val REAL_TOKENIZER_SIZE   = 32_170_510L
 
         private const val ENGLISH_QUERY = "penalty for late rent payment"
