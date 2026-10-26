@@ -3,9 +3,10 @@ package com.narad.search.lib.index.worker
 import com.narad.search.lib.index.store.IndexDatabase
 import com.narad.search.lib.index.store.IndexRepository
 
-// ponytail: head of the file only (~115 KB of text at 512-char chunks). Text past it is not
-// searchable. Upgrade path: sample chunks spread across the file if long files miss hits.
-internal const val MAX_CHUNKS_PER_FILE = 256
+// ponytail: head of the file only (~14 KB of text at 512-char chunks): the first pages are enough
+// to find a file, and a 32-chunk cap keeps the first index fast. Text past it is not searchable.
+// Upgrade path: deepen later (a second pass over long files, or chunks spread across the file).
+internal const val MAX_CHUNKS_PER_FILE = 32
 
 /**
  * When to publish progress: at every [everyFiles]-th file, or when [everyMs] passed since the
@@ -73,8 +74,10 @@ class Indexer(
     // Checked before each file. Each file is persisted on its own, so stopping between
     // files is safe and the next run resumes via fileNeedsIndex().
     private val shouldStop: () -> Boolean = { false },
-    // Called after each file that was read (not for unchanged files): path, ms, chunks written.
-    private val onFileDone: (filePath: String, ms: Long, chunks: Int) -> Unit = { _, _, _ -> }
+    // Called after each file that was read (not for unchanged files): path, total ms, chunks
+    // written, ms in extractText, ms in the embedder.
+    private val onFileDone: (filePath: String, ms: Long, chunks: Int, extractMs: Long, embedMs: Long) -> Unit =
+        { _, _, _, _, _ -> }
 ) {
 
     /**
@@ -107,10 +110,14 @@ class Indexer(
             }
 
             val fileStart = System.nanoTime()
-            fun fileDone(chunks: Int) = onFileDone(filePath, (System.nanoTime() - fileStart) / 1_000_000, chunks)
+            var extractMs = 0L
+            var embedMs = 0L
+            fun fileDone(chunks: Int) =
+                onFileDone(filePath, (System.nanoTime() - fileStart) / 1_000_000, chunks, extractMs, embedMs)
 
             // Extract text
             val text = extractText(filePath)
+            extractMs = (System.nanoTime() - fileStart) / 1_000_000
             if (text.isNullOrBlank()) {
                 // Mark as indexed even if no text (avoids repeated attempts on binary files).
                 // Fix item 6: delete any stale chunks for this file before marking.
@@ -131,12 +138,14 @@ class Indexer(
             // DOCX made ~2,300 chunks and held the whole run for minutes (stress test, 2026-10-25).
             val chunks = chunkText(text).take(MAX_CHUNKS_PER_FILE)
             val chunkData = mutableListOf<Triple<Int, FloatArray, String>>()
+            val embedStart = System.nanoTime()
             for ((chunkIndex, chunkContent) in chunks.withIndex()) {
                 // Large files: stop mid-file too. The file stays unmarked, so the next run redoes it.
                 if (shouldStop()) return false
                 val vector = embedder.embed(chunkContent)
                 chunkData.add(Triple(chunkIndex, vector, chunkContent))
             }
+            embedMs = (System.nanoTime() - embedStart) / 1_000_000
 
             // Fix items 6 + 11: upsertChunksForFile deletes orphan chunks first,
             // then writes all chunks in a single transaction.

@@ -609,12 +609,12 @@ class IndexWorker @JvmOverloads constructor(
         var photosTotal = 0
         var filesRead = 0
         // Each file that was read (unchanged files are not). Name and size cost one query: metrics only.
-        val onFileRead: (target: String, mime: String?, ms: Long, chunks: Int, result: String) -> Unit =
-            { target, mime, ms, chunks, result ->
+        val onFileRead: (target: String, mime: String?, ms: Long, chunks: Int, result: String, extractMs: Long, embedMs: Long) -> Unit =
+            { target, mime, ms, chunks, result, extractMs, embedMs ->
                 filesRead++
                 if (metrics != null) {
                     val (name, size) = nameAndSize(applicationContext, target)
-                    metrics.file(name, mime, size, ms, chunks, result)
+                    metrics.file(name, mime, size, ms, chunks, result, extractMs, embedMs)
                 }
             }
         var embedder: LazyEmbedder? = null
@@ -733,8 +733,8 @@ class IndexWorker @JvmOverloads constructor(
                     checkpointEvery = 50,
                     onProgress = onDocProgress,
                     shouldStop = { isStopped },
-                    onFileDone = { path, ms, chunks ->
-                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned))
+                    onFileDone = { path, ms, chunks, extractMs, embedMs ->
+                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
                     }
                 )
                 indexer.indexFiles(rawFilePaths)
@@ -800,8 +800,8 @@ class IndexWorker @JvmOverloads constructor(
                         onProgress = onDocProgress,
                         lastModifiedOf = { uriString -> docDateMap[uriString] ?: 0L },
                         shouldStop = { isStopped },
-                        onFileDone = { uriString, ms, chunks ->
-                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned))
+                        onFileDone = { uriString, ms, chunks, extractMs, embedMs ->
+                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
                         }
                     )
                     val docUris = docTargets.map { it.uri }
@@ -837,8 +837,8 @@ class IndexWorker @JvmOverloads constructor(
                             updateStageNotification(s)
                         },
                         runId = runId,
-                        onPhotoRead = { uri, mime, ms, result ->
-                            onFileRead(uri, mime, ms, if (result == RESULT_INDEXED) 1 else 0, result)
+                        onPhotoRead = { uri, mime, ms, result, decodeMs, encodeMs ->
+                            onFileRead(uri, mime, ms, if (result == RESULT_INDEXED) 1 else 0, result, decodeMs, encodeMs)
                         },
                         onVisionBuilt = { metrics?.pss("vision_model") }
                     )
@@ -1029,8 +1029,8 @@ class IndexWorker @JvmOverloads constructor(
         onFinding: () -> Unit = {},
         /** M18: run ID for event writing. Required; always passed by runIndexing. */
         runId: String,
-        /** Each photo read: uri, MediaStore MIME type, ms, result. */
-        onPhotoRead: (String, String?, Long, String) -> Unit = { _, _, _, _ -> },
+        /** Each photo read: uri, MediaStore MIME type, ms, result, decode ms, encode ms. */
+        onPhotoRead: (String, String?, Long, String, Long, Long) -> Unit = { _, _, _, _, _, _ -> },
         /** Called once the vision encoder is built (metrics PSS point). */
         onVisionBuilt: () -> Unit = {}
     ): VisionIndexOutcome {
@@ -1164,7 +1164,9 @@ class IndexWorker @JvmOverloads constructor(
                 onEvent      = { uri, errorClass, msg ->
                     repository.appendEvent(runId, "photos", "WARN", uri, errorClass, msg)
                 },
-                onPhotoDone  = { uri, ms, result -> onPhotoRead(uri, imageMimeMap[uri], ms, result) }
+                onPhotoDone  = { uri, ms, result, decodeMs, encodeMs ->
+                    onPhotoRead(uri, imageMimeMap[uri], ms, result, decodeMs, encodeMs)
+                }
             )
 
             val imageUris = imageTargets.map { it.uri }
