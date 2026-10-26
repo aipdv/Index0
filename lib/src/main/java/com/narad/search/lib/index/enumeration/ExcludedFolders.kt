@@ -5,9 +5,13 @@ import android.content.Context
 /**
  * Index0: folders the index never reads, like Spotlight Privacy on macOS.
  *
- * Default rules: everything under `<volume root>/Android/` (app data and system files), and
- * every folder whose name starts with `.` (hidden folders). A dot-file in a visible folder is
- * still indexed. User entries are absolute folder paths, matched on a `/` boundary.
+ * Default rules: everything under `<volume root>/Android/` (app data and system files) except
+ * `Android/media/`, and every folder whose name starts with `.` (hidden folders). A dot-file in a
+ * visible folder is still indexed. User entries are absolute folder paths, matched on a `/` boundary.
+ *
+ * `Android/media/` stays in: on Android 11+ WhatsApp and Telegram keep the user's own files there
+ * (e.g. `Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/`). Their hidden folders
+ * (`.Statuses`) are still dropped by the dot rule.
  *
  * One matcher ([isExcluded]) serves enumeration and the search-result filter.
  *
@@ -21,7 +25,8 @@ object ExcludedFolders {
     private const val LIB_PREFS = "narad_lib_prefs"
     private const val KEY_USER_FOLDERS = "excluded_folders"
 
-    private val ANDROID_DIR = Regex("^/storage/(emulated/\\d+|[^/]+)/android(/|$)", RegexOption.IGNORE_CASE)
+    private val ANDROID_DIR =
+        Regex("^/storage/(emulated/\\d+|[^/]+)/android(?!/media(/|$))(/|$)", RegexOption.IGNORE_CASE)
 
     fun userFolders(context: Context): List<String> =
         context.getSharedPreferences(LIB_PREFS, Context.MODE_PRIVATE)
