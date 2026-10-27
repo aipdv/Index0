@@ -863,6 +863,8 @@
     <string name="indexing_background_ask_vivo">On this phone, also allow high background power use for Better Files on the next screen.</string>
     <string name="indexing_background_allow">Allow</string>
     <string name="indexing_background_not_now">Not now</string>
+    <string name="indexing_background_off_title">Background running is off</string>
+    <string name="indexing_background_off_summary">Tap to allow</string>
     <string name="settings_search_title">Search</string>
     <string name="settings_indexing_summary">Meaning search, search model, overnight indexing</string>
     <string name="indexing_excluded_category">Do not index</string>
