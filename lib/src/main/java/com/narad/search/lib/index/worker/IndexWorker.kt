@@ -634,6 +634,13 @@ class IndexWorker @JvmOverloads constructor(
         // closure can include the file name without an additional parameter.
         var currentTarget = ""
         var currentTargetWarned = false
+        var currentTargetEmbedFailed = false
+        // One bad file: one WARN event, then the run goes on (Indexer marks the file).
+        val onEmbedFail: (String, Exception) -> Unit = { target, e ->
+            Log.w(TAG, "Embedding failed for $target, skipped until it changes", e)
+            currentTargetEmbedFailed = true
+            repository.appendEvent(runId, "embedding", "WARN", target, e.javaClass.simpleName, "Embedding failed, file skipped until it changes")
+        }
 
         val rawFilePaths = inputData.getString(KEY_FILE_PATHS)
             ?.split("\n")
@@ -729,6 +736,7 @@ class IndexWorker @JvmOverloads constructor(
                     extractText = { path ->
                         currentTarget = path  // M18: update before extract so onWarn has the name
                         currentTargetWarned = false
+                        currentTargetEmbedFailed = false
                         try {
                             val file = File(path)
                             val mimeType = guessMimeType(file)
@@ -748,9 +756,10 @@ class IndexWorker @JvmOverloads constructor(
                     onProgress = onDocProgress,
                     shouldStop = { isStopped },
                     onFileDone = { path, ms, chunks, extractMs, embedMs ->
-                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
+                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned, currentTargetEmbedFailed), extractMs, embedMs)
                     },
                     batchSize = batchSize,
+                    onEmbedFail = onEmbedFail,
                 )
                 indexer.indexFiles(rawFilePaths)
                 if (isStopped) {
@@ -798,6 +807,7 @@ class IndexWorker @JvmOverloads constructor(
                         extractText = { uriString ->
                             currentTarget = uriString  // M18: update before extract
                             currentTargetWarned = false
+                            currentTargetEmbedFailed = false
                             try {
                                 extractor.extract(Uri.parse(uriString), applicationContext)
                             } catch (e: Exception) {
@@ -816,9 +826,10 @@ class IndexWorker @JvmOverloads constructor(
                         lastModifiedOf = { uriString -> docDateMap[uriString] ?: 0L },
                         shouldStop = { isStopped },
                         onFileDone = { uriString, ms, chunks, extractMs, embedMs ->
-                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
+                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned, currentTargetEmbedFailed), extractMs, embedMs)
                         },
                         batchSize = batchSize,
+                        onEmbedFail = onEmbedFail,
                     )
                     val docUris = docTargets.map { it.uri }
                     val docPassFinished = indexer.indexFiles(docUris) && !isStopped
