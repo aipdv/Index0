@@ -186,8 +186,8 @@ class IndexingFragment : PreferenceFragmentCompat() {
             photoOnDone == PhotoModelStatus.Missing || photoOnDone is PhotoModelStatus.Failed
         startPreference.isEnabled = !status.running
         reindexPreference.isEnabled = !status.running
-        // Heat notice while the first index runs (Index now or the terms flow), battery ask after it.
-        IndexPrompts.maybeShow(this, status.running)
+        // One dialog while files are read: the heat notice and the background ask (Indexing screen only).
+        IndexPrompts.maybeShow(this, status.stage is IndexStage.Reading)
     }
 
     private fun exportMetrics() {
