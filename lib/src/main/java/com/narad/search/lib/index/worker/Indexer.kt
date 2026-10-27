@@ -9,8 +9,12 @@ import com.narad.search.lib.index.store.IndexRepository
 // Upgrade path: deepen later (a second pass over long files, or chunks spread across the file).
 internal const val MAX_CHUNKS_PER_FILE = 32
 
-/** Chunks of one file per [Embedder.embedBatch] call (research spec section 7.3). */
-internal const val BATCH_SIZE = 8
+/**
+ * Chunks of one file per [Embedder.embedBatch] call. 4, not 8: on narad36 (2026-10-27 smoke test)
+ * B=8 ran 24% slower than B=1 and pushed doc-pass PSS to 790 MB; B=4 was 4% faster at 539 MB.
+ * Phones without dotprod (CompFp32) share the dequant cost per row, so take the larger passing B.
+ */
+internal const val BATCH_SIZE = 4
 
 /** Padded tokens per model run: Tier C phones have less RAM (spec 7.4: ~40-80 MB at 1024). */
 internal fun tokenBudget(tier: Tier): Int = if (tier == Tier.C) 1024 else 2048
