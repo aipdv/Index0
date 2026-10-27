@@ -852,7 +852,7 @@
     <string name="indexing_overnight_title">Overnight indexing</string>
     <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low</string>
     <string name="indexing_excluded_category">Do not index</string>
-    <string name="indexing_excluded_defaults">The Android folder (except Android/media) and hidden folders are always skipped</string>
+    <string name="indexing_excluded_defaults">The Android folder (except Android/media) and hidden folders are always skipped. Scanned PDFs and password-protected PDFs are not searchable yet.</string>
     <string name="indexing_excluded_add">Add folder</string>
     <string name="indexing_excluded_remove_title">Index this folder again?</string>
     <string name="indexing_excluded_remove">Index again</string>
