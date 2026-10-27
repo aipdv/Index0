@@ -51,11 +51,13 @@ internal fun runEndMessage(
 internal const val RESULT_INDEXED = "indexed"
 internal const val RESULT_EMPTY = "empty"
 internal const val RESULT_EXTRACT_FAIL = "extract_fail"
+internal const val RESULT_EMBED_FAIL = "embed_fail"
 internal const val RESULT_DECODE_FAIL = "decode_fail"
 internal const val RESULT_ENCODE_FAIL = "encode_fail"
 
 /** Pure: a document's result from its chunk count and whether extraction warned. */
-internal fun docResult(chunks: Int, warned: Boolean): String = when {
+internal fun docResult(chunks: Int, warned: Boolean, embedFailed: Boolean = false): String = when {
+    embedFailed -> RESULT_EMBED_FAIL
     chunks > 0 -> RESULT_INDEXED
     warned -> RESULT_EXTRACT_FAIL
     else -> RESULT_EMPTY
