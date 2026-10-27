@@ -28,6 +28,9 @@ object IndexNotifications {
             ).apply {
                 description = "Shows indexing progress for Narad semantic search"
                 setShowBadge(false)
+                // Only new channels get this; the builder flags cover phones that have the channel.
+                setSound(null, null)
+                enableVibration(false)
             }
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
@@ -61,6 +64,9 @@ object IndexNotifications {
             .setOngoing(true)
             .setProgress(total, processed, total == 0)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            // vivo Funtouch turns sound on for this LOW channel and alerted on every file update.
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
             .build()
     }
 
