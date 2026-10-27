@@ -151,7 +151,8 @@ class EmbeddingModel(
      * @return One L2-normalised 256-dim vector per text, in the order of [texts].
      */
     fun embedDocuments(texts: List<String>, tokenBudget: Int = DEFAULT_TOKEN_BUDGET): List<FloatArray> {
-        require(texts.none { it.isBlank() }) { "A batch must not hold a blank chunk" }
+        // A blank chunk is valid (a 512-char window inside a PDF's whitespace run): DOC_PREFIX
+        // still gives every row real tokens, the same as embedDocument.
         return embedRows(texts.map { tokenizer.encode("$DOC_PREFIX$it") }, tokenBudget)
     }
 
