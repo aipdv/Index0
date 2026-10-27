@@ -841,7 +841,7 @@
     <string name="indexing_model_failed">Download failed: %1$s. Tap to try again.</string>
     <string name="indexing_download_failed_connection">Check your connection</string>
     <string name="indexing_terms_title">Download the search model?</string>
-    <string name="indexing_terms_message"><![CDATA[This app downloads EmbeddingGemma from Hugging Face, about 320 MB, once. Your files never leave this phone. By downloading, you agree to the <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>.]]></string>
+    <string name="indexing_terms_message"><![CDATA[This app downloads EmbeddingGemma 2 from Hugging Face, about 320 MB, once. Your files never leave this phone. By downloading, you agree to the <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>.]]></string>
     <string name="indexing_terms_accept">Download</string>
     <string name="indexing_start_title">Index now</string>
     <string name="indexing_start_summary">Reads new and changed files</string>
