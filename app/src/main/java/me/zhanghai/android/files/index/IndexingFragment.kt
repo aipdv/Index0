@@ -50,6 +50,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
     private lateinit var modelPreference: Preference
     private lateinit var startPreference: Preference
     private lateinit var reindexPreference: Preference
+    private lateinit var backgroundOffPreference: Preference
     private lateinit var excludedCategory: PreferenceCategory
 
     override fun onCreatePreferencesFix(savedInstanceState: Bundle?, rootKey: String?) {
@@ -103,10 +104,22 @@ class IndexingFragment : PreferenceFragmentCompat() {
                 BootReceiver.setOvernightEnabled(context, newValue as Boolean)
                 Analytics.capture("overnight_indexing_toggled", mapOf("enabled" to newValue))
                 IndexPrompts.onOvernightToggled(this@IndexingFragment, newValue)
+                backgroundOffPreference.isVisible = IndexPrompts.isBackgroundOff()
                 true
             }
         }
-        listOf(statusPreference, modelPreference, startPreference, reindexPreference, overnightPreference)
+        // Shown while overnight is on and the app is not battery exempt; onResume checks again.
+        backgroundOffPreference = Preference(context).apply {
+            setTitle(R.string.indexing_background_off_title)
+            setSummary(R.string.indexing_background_off_summary)
+            isIconSpaceReserved = false
+            isVisible = false
+            setOnPreferenceClickListener { IndexPrompts.allow(this@IndexingFragment); true }
+        }
+        listOf(
+            statusPreference, modelPreference, startPreference, reindexPreference, overnightPreference,
+            backgroundOffPreference
+        )
             .forEach { statusCategory.addPreference(it) }
         // NARAD_METRICS test build only; R8 drops it from the public APK.
         if (LibBuildConfig.METRICS) {
@@ -143,6 +156,11 @@ class IndexingFragment : PreferenceFragmentCompat() {
                 launch { IndexEngine.provisioner.stateFlow.collect { bindModel(it) } }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        backgroundOffPreference.isVisible = IndexPrompts.isBackgroundOff()
     }
 
     private fun bindStatus(state: IndexingUiState, photo: PhotoModelStatus?) {

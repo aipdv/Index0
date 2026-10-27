@@ -117,6 +117,10 @@ object IndexPrompts {
         return true
     }
 
+    /** The Indexing row "Background running is off": the same rule as the toggle ask, checked on resume. */
+    fun isBackgroundOff(): Boolean =
+        shouldAskBatteryOnToggle(BootReceiver.isOvernightEnabled(application), ::isExempt)
+
     fun onOvernightToggled(fragment: Fragment, enabled: Boolean) {
         if (shouldAskBatteryOnToggle(enabled, ::isExempt)) {
             prefs.edit { putBoolean(KEY_BATTERY_ASKED, true) }
