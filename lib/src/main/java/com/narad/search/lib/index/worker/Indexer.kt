@@ -1,5 +1,6 @@
 package com.narad.search.lib.index.worker
 
+import com.narad.search.lib.device.Tier
 import com.narad.search.lib.index.store.IndexDatabase
 import com.narad.search.lib.index.store.IndexRepository
 
@@ -7,6 +8,45 @@ import com.narad.search.lib.index.store.IndexRepository
 // to find a file, and a 32-chunk cap keeps the first index fast. Text past it is not searchable.
 // Upgrade path: deepen later (a second pass over long files, or chunks spread across the file).
 internal const val MAX_CHUNKS_PER_FILE = 32
+
+/**
+ * Chunks of one file per [Embedder.embedBatch] call. 4, not 8: on narad36 (2026-10-27 smoke test)
+ * B=8 ran 24% slower than B=1 and pushed doc-pass PSS to 790 MB; B=4 was 4% faster at 539 MB.
+ * Phones without dotprod (CompFp32) share the dequant cost per row, so take the larger passing B.
+ */
+internal const val BATCH_SIZE = 4
+
+/**
+ * Embed failures in a row that end the run. One bad file is skipped, but a broken model would
+ * fail every file and mark the whole library as handled with no chunks, so it must fail the run.
+ */
+// ponytail: up to 2 files that failed before the limit stay marked until they change. Upgrade path:
+// unmark them when the limit is hit.
+internal const val MAX_EMBED_FAILS_IN_A_ROW = 3
+
+/** Padded tokens per model run: Tier C phones have less RAM (spec 7.4: ~40-80 MB at 1024). */
+internal fun tokenBudget(tier: Tier): Int = if (tier == Tier.C) 1024 else 2048
+
+/**
+ * Embed one file's [chunks] in batches of [batchSize], in order. [shouldStop] is checked before
+ * each batch. Returns null when it stopped: the caller leaves the file unmarked, so resume redoes it.
+ * Never batches across files: each file is saved on its own, and resume depends on that.
+ */
+internal fun embedChunks(
+    chunks: List<String>,
+    batchSize: Int,
+    embedder: Embedder,
+    shouldStop: () -> Boolean,
+): List<FloatArray>? {
+    val vectors = ArrayList<FloatArray>(chunks.size)
+    for (batch in chunks.chunked(batchSize)) {
+        if (shouldStop()) return null
+        val out = embedder.embedBatch(batch)
+        check(out.size == batch.size) { "embedBatch returned ${out.size} vectors for ${batch.size} chunks" }
+        vectors += out
+    }
+    return vectors
+}
 
 /**
  * When to publish progress: at every [everyFiles]-th file, or when [everyMs] passed since the
@@ -42,7 +82,7 @@ internal class ProgressTicker(
  *  1. Check [repository.fileNeedsIndex] - skip if unchanged (dedup/idempotency).
  *  2. Extract text via [extractText].
  *  3. Chunk via [chunkText].
- *  4. Embed each chunk via [embedder].
+ *  4. Embed the chunks via [embedder], [batchSize] per call ([embedChunks]).
  *  5. Fix item 6: call [repository.upsertChunksForFile] which deletes stale orphan
  *     chunks BEFORE writing the new set, then writes all chunks in one transaction
  *     (fix item 11: transaction batching).
@@ -77,8 +117,14 @@ class Indexer(
     // Called after each file that was read (not for unchanged files): path, total ms, chunks
     // written, ms in extractText, ms in the embedder.
     private val onFileDone: (filePath: String, ms: Long, chunks: Int, extractMs: Long, embedMs: Long) -> Unit =
-        { _, _, _, _, _ -> }
+        { _, _, _, _, _ -> },
+    // Chunks per embedder call, inside one file only.
+    private val batchSize: Int = BATCH_SIZE,
+    // Called when the embedder threw on a file. The file is then marked with 0 chunks, the same
+    // as an unreadable file, so it is not retried until it changes.
+    private val onEmbedFail: (filePath: String, error: Exception) -> Unit = { _, _ -> },
 ) {
+    private var embedFailsInARow = 0
 
     /**
      * Index all files in [filePaths].
@@ -137,15 +183,25 @@ class Indexer(
             // Chunk and embed. Only the first MAX_CHUNKS_PER_FILE chunks: a 1 MB log or a long
             // DOCX made ~2,300 chunks and held the whole run for minutes (stress test, 2026-10-25).
             val chunks = chunkText(text).take(MAX_CHUNKS_PER_FILE)
-            val chunkData = mutableListOf<Triple<Int, FloatArray, String>>()
             val embedStart = System.nanoTime()
-            for ((chunkIndex, chunkContent) in chunks.withIndex()) {
-                // Large files: stop mid-file too. The file stays unmarked, so the next run redoes it.
-                if (shouldStop()) return false
-                val vector = embedder.embed(chunkContent)
-                chunkData.add(Triple(chunkIndex, vector, chunkContent))
+            // Large files: stop mid-file too (between batches). The file stays unmarked, so the next run redoes it.
+            // An Exception fails this file only (an Error such as OOM still ends the run).
+            val vectors = try {
+                embedChunks(chunks, batchSize, embedder, shouldStop) ?: return false
+            } catch (e: Exception) {
+                if (++embedFailsInARow >= MAX_EMBED_FAILS_IN_A_ROW) throw e
+                embedMs = (System.nanoTime() - embedStart) / 1_000_000
+                onEmbedFail(filePath, e)
+                repository.deleteChunksForFile(filePath)
+                repository.markFileIndexed(filePath = filePath, mimeType = null, lastModified = lastModified, chunkCount = 0)
+                fileDone(0)
+                processed++
+                maybeCheckpoint()
+                continue
             }
+            embedFailsInARow = 0
             embedMs = (System.nanoTime() - embedStart) / 1_000_000
+            val chunkData = chunks.mapIndexed { chunkIndex, chunkContent -> Triple(chunkIndex, vectors[chunkIndex], chunkContent) }
 
             // Fix items 6 + 11: upsertChunksForFile deletes orphan chunks first,
             // then writes all chunks in a single transaction.
