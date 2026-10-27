@@ -47,6 +47,9 @@ class EmbeddingModel(
 
         /** Prompt prefix for indexed document chunks. */
         private const val DOC_PREFIX = "title: none | text: "
+
+        /** Padded tokens per [embedDocuments] run when the caller gives no budget (Tier A/B). */
+        const val DEFAULT_TOKEN_BUDGET = 2048
     }
 
     // Process-wide OrtEnvironment singleton - NEVER close it (U4 fix).
@@ -138,6 +141,60 @@ class EmbeddingModel(
      * @return L2-normalised 256-dim embedding.
      */
     fun embedDocument(text: String): FloatArray = embed("$DOC_PREFIX$text")
+
+    /**
+     * Embed document chunks in as few runs as [tokenBudget] (padded tokens per run) allows. Each
+     * vector equals [embedDocument] of the same text (cosine >= 0.9999, EmbeddingModelBatchTest):
+     * right padding with id 0 and mask 0 keeps every real token's position, the graph gives padded
+     * keys zero attention, and pooling is a masked mean (research spec section 7.1).
+     *
+     * @return One L2-normalised 256-dim vector per text, in the order of [texts].
+     */
+    fun embedDocuments(texts: List<String>, tokenBudget: Int = DEFAULT_TOKEN_BUDGET): List<FloatArray> {
+        // A blank chunk is valid (a 512-char window inside a PDF's whitespace run): DOC_PREFIX
+        // still gives every row real tokens, the same as embedDocument.
+        return embedRows(texts.map { tokenizer.encode("$DOC_PREFIX$it") }, tokenBudget)
+    }
+
+    /** One run for [rows] when `rows * longest <= tokenBudget`, else split in half. */
+    private fun embedRows(rows: List<Tokenized>, tokenBudget: Int): List<FloatArray> {
+        if (rows.isEmpty()) return emptyList()
+        val maxLen = rows.maxOf { it.inputIds.size }
+        if (rows.size > 1 && rows.size * maxLen > tokenBudget) {
+            val half = rows.size / 2
+            return embedRows(rows.subList(0, half), tokenBudget) + embedRows(rows.subList(half, rows.size), tokenBudget)
+        }
+        // Right padding: ids 0 (<pad>, not an image/audio token id) and mask 0 after each row's tokens.
+        val ids = LongArray(rows.size * maxLen)
+        val mask = LongArray(rows.size * maxLen)
+        rows.forEachIndexed { r, t ->
+            t.inputIds.copyInto(ids, r * maxLen)
+            t.attentionMask.copyInto(mask, r * maxLen)
+        }
+        val shape = longArrayOf(rows.size.toLong(), maxLen.toLong())
+        val inputs = mapOf(
+            "input_ids" to OnnxTensor.createTensor(env, LongBuffer.wrap(ids), shape),
+            "attention_mask" to OnnxTensor.createTensor(env, LongBuffer.wrap(mask), shape),
+            "image_features" to OnnxTensor.createTensor(env, FloatBuffer.allocate(0), longArrayOf(0L, 512L)),
+            "video_features" to OnnxTensor.createTensor(env, FloatBuffer.allocate(0), longArrayOf(0L, 512L)),
+            "audio_features" to OnnxTensor.createTensor(env, FloatBuffer.allocate(0), longArrayOf(0L, 512L)),
+        )
+        try {
+            session.run(inputs, setOf("sentence_embedding")).use { out ->
+                @Suppress("UNCHECKED_CAST")
+                val raw = out[0].value as Array<FloatArray>
+                check(raw.size == rows.size) { "Expected ${rows.size} rows, got ${raw.size}" }
+                return raw.mapIndexed { r, row ->
+                    check(row.size == RAW_DIM) { "Expected ${RAW_DIM}-dim sentence_embedding, got ${row.size}" }
+                    l2Normalize(row.copyOfRange(0, DIM)).also { v ->
+                        check(v.none { it.isNaN() }) { "Embedding contains NaN (row $r of ${rows.size}, $maxLen tokens)" }
+                    }
+                }
+            }
+        } finally {
+            inputs.values.forEach { it.close() }
+        }
+    }
 
     /** Runs the ONNX graph on [promptedText] and returns a 256-dim L2-normalised vector. */
     private fun embed(promptedText: String): FloatArray {

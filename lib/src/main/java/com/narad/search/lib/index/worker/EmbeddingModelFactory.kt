@@ -30,14 +30,19 @@ object EmbeddingModelFactory {
      * @param modelPath         Absolute path to `model_quantized.onnx`.
      *                          `model_quantized.onnx_data` must be in the same directory.
      * @param tokenizerJsonPath Absolute path to the companion `tokenizer.json`.
+     * @param tokenBudget       Padded tokens per batched model run (by device tier).
      * @return A fully-wired [OnnxEmbedder] ready to produce 256-dim embeddings.
      * @throws java.io.IOException if tokenizerJsonPath is not a readable tokenizer.json.
      * @throws ai.onnxruntime.OrtException if modelPath does not point to a valid ONNX model.
      */
-    fun build(modelPath: String, tokenizerJsonPath: String): OnnxEmbedder {
+    fun build(
+        modelPath: String,
+        tokenizerJsonPath: String,
+        tokenBudget: Int = EmbeddingModel.DEFAULT_TOKEN_BUDGET,
+    ): OnnxEmbedder {
         val tokenizer = DjlTokenizer(tokenizerJsonPath)
         return try {
-            OnnxEmbedder(EmbeddingModel(modelPath, tokenizer))
+            OnnxEmbedder(EmbeddingModel(modelPath, tokenizer), tokenBudget)
         } catch (e: Exception) {
             tokenizer.close()
             throw e

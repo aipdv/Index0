@@ -19,4 +19,12 @@ interface Embedder : AutoCloseable {
      * Embed [text] and return an L2-normalised [FloatArray] of length 256.
      */
     fun embed(text: String): FloatArray
+
+    /**
+     * Embed several chunks of one file in one model call where the implementation can. Same order
+     * as [texts]. The default runs [embed] per text, so test fakes need no change. A wrapper (like
+     * LazyEmbedder) must override this and forward, or batching silently falls back to one call
+     * per chunk.
+     */
+    fun embedBatch(texts: List<String>): List<FloatArray> = texts.map(::embed)
 }
