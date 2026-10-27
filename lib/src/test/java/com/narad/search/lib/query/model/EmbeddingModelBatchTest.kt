@@ -40,6 +40,7 @@ class EmbeddingModelBatchTest {
         "Kal subah 10 baje doctor ka appointment hai, report saath le jana mat bhoolna.",
         "INVOICE\nBill to: Asha Traders\n\nItem\tQty\tPrice\nPaper A4\t10\t2,500\n\nTotal due: 2,500",
         "lorem ".repeat(60).trim(),
+        " \n\n   \n ".repeat(40), // blank chunk: a window inside a PDF's whitespace run
     )
 
     @Before
