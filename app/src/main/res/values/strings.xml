@@ -857,7 +857,7 @@
     <string name="indexing_reindex_title">Rebuild index</string>
     <string name="indexing_reindex_summary">Deletes the index and reads every file again</string>
     <string name="indexing_overnight_title">Overnight indexing</string>
-    <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low</string>
+    <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low. Some phones stop background work. If progress stops, open Better Files. It continues where it stopped.</string>
     <string name="indexing_heat_notice">Indexing is in progress. Your phone may get warm while it reads your files. This is normal and stops when indexing finishes.</string>
     <string name="indexing_background_ask">Allow Better Files to run in the background so indexing does not stop.</string>
     <string name="indexing_background_ask_vivo">On this phone, also allow high background power use for Better Files on the next screen.</string>
