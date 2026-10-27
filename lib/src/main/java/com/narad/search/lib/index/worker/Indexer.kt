@@ -16,6 +16,14 @@ internal const val MAX_CHUNKS_PER_FILE = 32
  */
 internal const val BATCH_SIZE = 4
 
+/**
+ * Embed failures in a row that end the run. One bad file is skipped, but a broken model would
+ * fail every file and mark the whole library as handled with no chunks, so it must fail the run.
+ */
+// ponytail: up to 2 files that failed before the limit stay marked until they change. Upgrade path:
+// unmark them when the limit is hit.
+internal const val MAX_EMBED_FAILS_IN_A_ROW = 3
+
 /** Padded tokens per model run: Tier C phones have less RAM (spec 7.4: ~40-80 MB at 1024). */
 internal fun tokenBudget(tier: Tier): Int = if (tier == Tier.C) 1024 else 2048
 
@@ -112,7 +120,11 @@ class Indexer(
         { _, _, _, _, _ -> },
     // Chunks per embedder call, inside one file only.
     private val batchSize: Int = BATCH_SIZE,
+    // Called when the embedder threw on a file. The file is then marked with 0 chunks, the same
+    // as an unreadable file, so it is not retried until it changes.
+    private val onEmbedFail: (filePath: String, error: Exception) -> Unit = { _, _ -> },
 ) {
+    private var embedFailsInARow = 0
 
     /**
      * Index all files in [filePaths].
@@ -173,7 +185,21 @@ class Indexer(
             val chunks = chunkText(text).take(MAX_CHUNKS_PER_FILE)
             val embedStart = System.nanoTime()
             // Large files: stop mid-file too (between batches). The file stays unmarked, so the next run redoes it.
-            val vectors = embedChunks(chunks, batchSize, embedder, shouldStop) ?: return false
+            // An Exception fails this file only (an Error such as OOM still ends the run).
+            val vectors = try {
+                embedChunks(chunks, batchSize, embedder, shouldStop) ?: return false
+            } catch (e: Exception) {
+                if (++embedFailsInARow >= MAX_EMBED_FAILS_IN_A_ROW) throw e
+                embedMs = (System.nanoTime() - embedStart) / 1_000_000
+                onEmbedFail(filePath, e)
+                repository.deleteChunksForFile(filePath)
+                repository.markFileIndexed(filePath = filePath, mimeType = null, lastModified = lastModified, chunkCount = 0)
+                fileDone(0)
+                processed++
+                maybeCheckpoint()
+                continue
+            }
+            embedFailsInARow = 0
             embedMs = (System.nanoTime() - embedStart) / 1_000_000
             val chunkData = chunks.mapIndexed { chunkIndex, chunkContent -> Triple(chunkIndex, vectors[chunkIndex], chunkContent) }
 
