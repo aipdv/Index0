@@ -12,6 +12,7 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import com.narad.search.lib.BuildConfig
 import com.narad.search.lib.device.DeviceTierDetector
+import com.narad.search.lib.device.Tier
 import com.narad.search.lib.index.chunking.Chunker
 import com.narad.search.lib.index.enumeration.MediaStoreEnumerator
 import com.narad.search.lib.index.extraction.DocumentExtractor
@@ -112,6 +113,9 @@ internal class LazyEmbedder(private val build: () -> Embedder) : Embedder {
     fun get(): Embedder = inner ?: build().also { inner = it }
 
     override fun embed(text: String): FloatArray = get().embed(text)
+
+    // Must forward: the interface default would run one model call per chunk (spec 7.2).
+    override fun embedBatch(texts: List<String>): List<FloatArray> = get().embedBatch(texts)
 
     override fun close() {
         inner?.close()
@@ -630,6 +634,13 @@ class IndexWorker @JvmOverloads constructor(
         // closure can include the file name without an additional parameter.
         var currentTarget = ""
         var currentTargetWarned = false
+        var currentTargetEmbedFailed = false
+        // One bad file: one WARN event, then the run goes on (Indexer marks the file).
+        val onEmbedFail: (String, Exception) -> Unit = { target, e ->
+            Log.w(TAG, "Embedding failed for $target, skipped until it changes", e)
+            currentTargetEmbedFailed = true
+            repository.appendEvent(runId, "embedding", "WARN", target, e.javaClass.simpleName, "Embedding failed, file skipped until it changes")
+        }
 
         val rawFilePaths = inputData.getString(KEY_FILE_PATHS)
             ?.split("\n")
@@ -683,13 +694,23 @@ class IndexWorker @JvmOverloads constructor(
                 }
             )
 
+            // Chunks per model call. NARAD_METRICS builds only: the debug_batch_size pref is the
+            // B sweep knob (R8 drops this branch from the public APK).
+            val batchSize = if (BuildConfig.METRICS) {
+                applicationContext.getSharedPreferences("narad_lib_prefs", Context.MODE_PRIVATE)
+                    .getInt("debug_batch_size", BATCH_SIZE).coerceAtLeast(1)
+            } else BATCH_SIZE
             // Built on the first chunk that needs embedding, not here (an unchanged delta never builds it).
             val lazyEmbedder = LazyEmbedder {
                 if (embedderFactory != null) {
                     embedderFactory.invoke(modelPath)
                 } else {
                     val tokenizerPath = File(modelPath).resolveSibling("tokenizer.json").absolutePath
-                    EmbeddingModelFactory.build(modelPath, tokenizerPath).also { metrics?.pss("text_model") }
+                    // Detection failed: take the small (Tier C) budget, the safe side for memory.
+                    val tier = runCatching { DeviceTierDetector.detect(applicationContext).tier }.getOrDefault(Tier.C)
+                    val budget = tokenBudget(tier)
+                    repository.appendEvent(runId, "run", "INFO", null, null, "batch=$batchSize budget=$budget")
+                    EmbeddingModelFactory.build(modelPath, tokenizerPath, budget).also { metrics?.pss("text_model") }
                 }
             }
             embedder = lazyEmbedder
@@ -715,6 +736,7 @@ class IndexWorker @JvmOverloads constructor(
                     extractText = { path ->
                         currentTarget = path  // M18: update before extract so onWarn has the name
                         currentTargetWarned = false
+                        currentTargetEmbedFailed = false
                         try {
                             val file = File(path)
                             val mimeType = guessMimeType(file)
@@ -734,8 +756,10 @@ class IndexWorker @JvmOverloads constructor(
                     onProgress = onDocProgress,
                     shouldStop = { isStopped },
                     onFileDone = { path, ms, chunks, extractMs, embedMs ->
-                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
-                    }
+                        onFileRead(path, guessMimeType(File(path)), ms, chunks, docResult(chunks, currentTargetWarned, currentTargetEmbedFailed), extractMs, embedMs)
+                    },
+                    batchSize = batchSize,
+                    onEmbedFail = onEmbedFail,
                 )
                 indexer.indexFiles(rawFilePaths)
                 if (isStopped) {
@@ -783,6 +807,7 @@ class IndexWorker @JvmOverloads constructor(
                         extractText = { uriString ->
                             currentTarget = uriString  // M18: update before extract
                             currentTargetWarned = false
+                            currentTargetEmbedFailed = false
                             try {
                                 extractor.extract(Uri.parse(uriString), applicationContext)
                             } catch (e: Exception) {
@@ -801,8 +826,10 @@ class IndexWorker @JvmOverloads constructor(
                         lastModifiedOf = { uriString -> docDateMap[uriString] ?: 0L },
                         shouldStop = { isStopped },
                         onFileDone = { uriString, ms, chunks, extractMs, embedMs ->
-                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned), extractMs, embedMs)
-                        }
+                            onFileRead(uriString, docMimeMap[uriString], ms, chunks, docResult(chunks, currentTargetWarned, currentTargetEmbedFailed), extractMs, embedMs)
+                        },
+                        batchSize = batchSize,
+                        onEmbedFail = onEmbedFail,
                     )
                     val docUris = docTargets.map { it.uri }
                     val docPassFinished = indexer.indexFiles(docUris) && !isStopped
