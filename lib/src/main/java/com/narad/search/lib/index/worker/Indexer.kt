@@ -10,11 +10,12 @@ import com.narad.search.lib.index.store.IndexRepository
 internal const val MAX_CHUNKS_PER_FILE = 32
 
 /**
- * Chunks of one file per [Embedder.embedBatch] call. 4, not 8: on narad36 (2026-10-27 smoke test)
- * B=8 ran 24% slower than B=1 and pushed doc-pass PSS to 790 MB; B=4 was 4% faster at 539 MB.
- * Phones without dotprod (CompFp32) share the dequant cost per row, so take the larger passing B.
+ * Chunks of one file per [Embedder.embedBatch] call. 1: on the PO's SD665 (no dotprod, v6 export
+ * 2026-10-28) B=4 ran 2.7-2.9 s per chunk vs 2.12 s at B=1, and on narad36 B=8 was 24% slower
+ * with doc-pass PSS at 790 MB. The batch path stays (metrics builds can set debug_batch_size).
  */
-internal const val BATCH_SIZE = 4
+// ponytail: one value for every phone; per-device B if a dotprod phone export shows a real gain.
+internal const val BATCH_SIZE = 1
 
 /**
  * Embed failures in a row that end the run. One bad file is skipped, but a broken model would

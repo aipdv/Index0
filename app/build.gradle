@@ -22,7 +22,7 @@ android {
         //noinspection OldTargetApi
         targetSdk 36
         versionCode 40
-        versionName '0.1.0'
+        versionName '0.1.0-beta.1'
         // Index0: EmbeddingGemma 2 base URL (pinned Hugging Face revision, same as Narad).
         buildConfigField 'String', 'MODEL_BASE_URL', '"https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0/"'
         def posthogApiKey = System.getenv('POSTHOG_API_KEY') ?: ''
