@@ -2,26 +2,26 @@
 
 Last updated: 2026-10-25.
 
-Index0 is a file manager with on-device search. It has no account and no servers of its own.
+Better Files is a file manager with on-device search. It has no account and no servers of its own.
 
-## Who runs Index0
+## Who runs Better Files
 
-Index0 is made and run by Prabhudayal Vaishnav (aipdv), an individual developer. He is the data controller for the analytics described below. For privacy questions or requests, email legal@aipdv.com.
+Better Files is made and run by Prabhudayal Vaishnav (aipdv), an individual developer. He is the data controller for the analytics described below. For privacy questions or requests, email legal@aipdv.com.
 
 ## Summary
 
 - Analytics are **off** until you turn them on. Nothing is sent before you agree.
-- If you turn them on, Index0 sends anonymous usage counts to PostHog in the EU.
+- If you turn them on, Better Files sends anonymous usage counts to PostHog in the EU.
 - Your files, file names, folders, and searches never leave your phone.
 - No ads, no advertising ID, no crash reporting, no account.
 
 ## Analytics (only if you opt in)
 
-Index0 asks once, after you have used the app a few times. You can also turn analytics on or off at any time in Settings > Privacy. If you say "No thanks" or close the question, analytics stay off.
+Better Files asks once, after you have used the app a few times. You can also turn analytics on or off at any time in Settings > Privacy. If you say "No thanks" or close the question, analytics stay off.
 
-Before you opt in, Index0 does not start the analytics library, stores no analytics ID, and sends no analytics data.
+Before you opt in, Better Files does not start the analytics library, stores no analytics ID, and sends no analytics data.
 
-When you opt in, Index0 creates a random anonymous ID and stores it on your phone. It is not linked to your name, your account, or your device ID.
+When you opt in, Better Files creates a random anonymous ID and stores it on your phone. It is not linked to your name, your account, or your device ID.
 
 ### Events we collect
 
@@ -66,28 +66,29 @@ Analytics events are deleted after 30 days.
 
 ### Your choices and rights
 
-- **Turn it off:** Settings > Privacy. Index0 stops recording events and replaces the anonymous ID, so later use cannot be linked to earlier events. Events recorded just before you turned it off may still be sent in the next batch.
-- **Access or deletion:** The data has no name or account attached, and Index0 does not show the ID, so we usually cannot find your events. Email legal@aipdv.com if you have a question, and we will help where we can.
+- **Turn it off:** Settings > Privacy. Better Files stops recording events and replaces the anonymous ID, so later use cannot be linked to earlier events. Events recorded just before you turned it off may still be sent in the next batch.
+- **Access or deletion:** The data has no name or account attached, and Better Files does not show the ID, so we usually cannot find your events. Email legal@aipdv.com if you have a question, and we will help where we can.
 - You can also complain to your data protection authority.
 
 ## Network use
 
-Index0 connects to the internet only for these features:
+Better Files connects to the internet only for these features:
 
-- **Search model download (optional).** Meaning search needs a model. You agree to the Gemma terms first. Then Index0 downloads the model from Hugging Face. Hugging Face sees your IP address, like any download. The model then runs on your phone.
-- **Network storage and FTP server.** Index0 connects to SMB, SFTP, FTP, and WebDAV servers only when you add them. The FTP server runs only when you start it.
-- **Analytics (only if you opt in).** Index0 sends the events above to PostHog EU.
+- **Search model download (optional).** Meaning search needs a model. You agree to the Gemma terms first. Then Better Files downloads the model from Hugging Face. Hugging Face sees your IP address, like any download. The model then runs on your phone.
+- **Network storage and FTP server.** Better Files connects to SMB, SFTP, FTP, and WebDAV servers only when you add them. The FTP server runs only when you start it.
+- **Analytics (only if you opt in).** Better Files sends the events above to PostHog EU.
 
 Builds made without an analytics key (for example, builds from source) have no analytics at all. The Settings > Privacy option does not show in those builds.
 
 ## Data on your phone
 
 - The search index and the downloaded models stay on your phone. They are excluded from Android backup.
+- Indexing keeps a short log of its own runs on your phone: the stage, counts, the battery level, whether the phone was charging or idle, free memory, and for a file that failed, its name and the error type. The log keeps at most 7 days and 500 entries. It is excluded from Android backup and is never sent.
 - App settings can be included in Android backup. These settings include saved network storage logins and your analytics choice.
 
 ## Children
 
-Index0 is not directed at children. We do not knowingly collect data from children.
+Better Files is not directed at children. We do not knowingly collect data from children.
 
 ## Changes to this policy
 

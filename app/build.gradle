@@ -15,7 +15,7 @@ android {
     compileSdkMinor = 2
     ndkVersion '30.0.16248370'
     defaultConfig {
-        applicationId 'com.aipdv.index0'
+        applicationId 'com.aipdv.bf'
         // Index0: the Narad engine (:lib) needs Android 10+ (API 29).
         minSdk 29
         // Not supporting the ACCESS_LOCAL_NETWORK runtime permission yet.

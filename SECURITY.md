@@ -6,4 +6,4 @@ Only the latest version of this app is currently being supported with security u
 
 ## Reporting a Vulnerability
 
-Please email dreaming.in.code.zh@gmail.com to report a vulnerability.
+Please report a vulnerability privately on GitHub: open the [Security tab](https://github.com/aipdv/Index0/security) of this repository and click "Report a vulnerability". Do not open a public issue for it.
