@@ -41,6 +41,7 @@ import me.zhanghai.android.files.util.mediumAnimTime
 import me.zhanghai.android.files.util.putState
 import me.zhanghai.android.files.util.showToast
 import me.zhanghai.android.files.util.startActivitySafe
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.withChooser
 import me.zhanghai.android.systemuihelper.SystemUiHelper
 import java.io.IOException
@@ -165,7 +166,7 @@ class ImageViewerFragment : Fragment(), ConfirmDeleteDialogFragment.Listener {
             path.delete()
         } catch (e: IOException) {
             e.printStackTrace()
-            showToast(e.toString())
+            showToast(e.toUiText())
             return
         }
         paths.removeAll(listOf(path))

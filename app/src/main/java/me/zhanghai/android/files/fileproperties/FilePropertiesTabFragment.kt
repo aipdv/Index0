@@ -23,6 +23,7 @@ import me.zhanghai.android.files.util.Stateful
 import me.zhanghai.android.files.util.fadeToVisibilityUnsafe
 import me.zhanghai.android.files.util.layoutInflater
 import me.zhanghai.android.files.util.showToast
+import me.zhanghai.android.files.util.toUiText
 
 abstract class FilePropertiesTabFragment : Fragment() {
     protected lateinit var binding: FilePropertiesTabFragmentBinding
@@ -52,7 +53,7 @@ abstract class FilePropertiesTabFragment : Fragment() {
         binding.errorText.fadeToVisibilityUnsafe(stateful is Failure && !hasValue)
         if (stateful is Failure) {
             stateful.throwable.printStackTrace()
-            val error = stateful.throwable.toString()
+            val error = stateful.throwable.toUiText()
             if (hasValue) {
                 showToast(error)
             } else {

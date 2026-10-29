@@ -36,6 +36,7 @@ import me.zhanghai.android.files.util.isReady
 import me.zhanghai.android.files.util.setResult
 import me.zhanghai.android.files.util.showToast
 import me.zhanghai.android.files.util.takeIfNotEmpty
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.viewModels
 import java.net.URI
 
@@ -296,7 +297,7 @@ class EditFtpServerFragment : Fragment() {
             is ActionState.Error -> {
                 val throwable = state.throwable
                 throwable.printStackTrace()
-                showToast(throwable.toString())
+                showToast(throwable.toUiText())
                 viewModel.finishConnecting()
             }
         }

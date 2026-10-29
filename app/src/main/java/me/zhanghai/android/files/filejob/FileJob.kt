@@ -9,6 +9,7 @@ import me.zhanghai.android.files.util.showToast
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.util.Random
+import me.zhanghai.android.files.util.toUiText
 
 abstract class FileJob {
     val id = Random().nextInt()
@@ -26,7 +27,7 @@ abstract class FileJob {
             e.printStackTrace()
         } catch (e: Exception) {
             e.printStackTrace()
-            service.showToast(e.toString())
+            service.showToast(e.toUiText())
         } finally {
             service.notificationManager.cancel(id)
         }

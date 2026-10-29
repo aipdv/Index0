@@ -17,6 +17,7 @@ import me.zhanghai.android.files.compat.mainExecutorCompat
 import me.zhanghai.android.files.settings.Settings
 import me.zhanghai.android.files.util.WakeWifiLock
 import me.zhanghai.android.files.util.showToast
+import me.zhanghai.android.files.util.toUiText
 import me.zhanghai.android.files.util.valueCompat
 import java.util.concurrent.Executors
 
@@ -66,7 +67,7 @@ class FtpServerService : Service() {
 
     private fun onStartError(exception: Exception) {
         state = State.STOPPED
-        showToast(exception.toString())
+        showToast(exception.toUiText())
         notification.stopForeground()
         wakeWifiLock.isAcquired = false
         stopSelf()

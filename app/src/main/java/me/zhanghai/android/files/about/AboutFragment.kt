@@ -37,21 +37,10 @@ class AboutFragment : Fragment() {
         activity.supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         binding.gitHubLayout.setOnClickListener { startActivitySafe(GITHUB_URI.createViewIntent()) }
         binding.licensesLayout.setOnClickListener { LicensesDialogFragment.show(this) }
-        binding.authorNameLayout.setOnClickListener {
-            startActivitySafe(AUTHOR_RESUME_URI.createViewIntent())
-        }
-        binding.authorGitHubLayout.setOnClickListener {
-            startActivitySafe(AUTHOR_GITHUB_URI.createViewIntent())
-        }
-        binding.authorTwitterLayout.setOnClickListener {
-            startActivitySafe(AUTHOR_TWITTER_URI.createViewIntent())
-        }
     }
 
     companion object {
-        private val GITHUB_URI = Uri.parse("https://github.com/zhanghai/MaterialFiles")
-        private val AUTHOR_RESUME_URI = Uri.parse("https://resume.zhanghai.me/")
-        private val AUTHOR_GITHUB_URI = Uri.parse("https://github.com/zhanghai")
-        private val AUTHOR_TWITTER_URI = Uri.parse("https://twitter.com/zhanghai95")
+        // Index0: own source repo. No upstream author card (credit stays on the Licenses screen).
+        private val GITHUB_URI = Uri.parse("https://github.com/aipdv/Index0")
     }
 }

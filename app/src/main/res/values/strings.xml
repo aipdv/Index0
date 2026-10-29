@@ -318,6 +318,7 @@
     <string name="file_list_paste_extract_title_format">Extracting %1$,d</string>
     <string name="file_list_paste_action_extract_here">Extract here</string>
     <string name="file_list_empty">No files</string>
+    <string name="file_list_error_root_unavailable">This folder needs root access</string>
     <string name="file_list_action_create_file">File</string>
     <string name="file_list_action_create_directory">Folder</string>
 
@@ -833,16 +834,15 @@
     <string name="indexing_counts">%1$d documents, %2$d photos</string>
     <string name="indexing_counts_last_run">%1$d documents, %2$d photos. Last run %3$s</string>
     <string name="indexing_model_title">Search model</string>
-    <string name="indexing_model_not_downloaded">Download about 320 MB once to search by meaning. Everything stays on this phone. Uses the Gemma Terms of Use.</string>
+    <string name="indexing_model_not_downloaded">Download about 320 MB once to search by meaning. Everything stays on this phone.</string>
     <string name="indexing_model_downloading">Downloading %1$d%%</string>
     <string name="indexing_model_verifying">Checking the download</string>
     <string name="indexing_model_ready">Ready. Search runs on this phone.</string>
     <string name="indexing_model_failed">Download failed: %1$s. Tap to try again.</string>
     <string name="indexing_download_failed_connection">Check your connection</string>
     <string name="indexing_terms_title">Download the search model?</string>
-    <string name="indexing_terms_message">Index0 downloads EmbeddingGemma from Hugging Face, about 320 MB, once. Your files never leave this phone. The model is provided under the Gemma Terms of Use.</string>
-    <string name="indexing_terms_link">Gemma Terms of Use</string>
-    <string name="indexing_terms_accept">Accept and download</string>
+    <string name="indexing_terms_message"><![CDATA[This app downloads EmbeddingGemma 2 from Hugging Face, about 320 MB, once. Your files never leave this phone. By downloading, you agree to the <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>.]]></string>
+    <string name="indexing_terms_accept">Download</string>
     <string name="indexing_start_title">Index now</string>
     <string name="indexing_start_summary">Reads new and changed files</string>
     <string name="indexing_start_needs_model">Download the search model first</string>

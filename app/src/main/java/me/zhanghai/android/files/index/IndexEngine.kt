@@ -53,8 +53,6 @@ internal fun shouldFetchPhotoModel(
         (visionState is ProvisionState.NotStarted || visionState is ProvisionState.Failed) &&
         imagesOn()
 
-internal const val GEMMA_TERMS_URL = "https://ai.google.dev/gemma/terms"
-
 /** App-wide wiring of the Narad engine (port of NaradApplication). */
 object IndexEngine {
     private const val TAG = "IndexEngine"
