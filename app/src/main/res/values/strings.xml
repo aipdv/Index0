@@ -794,6 +794,13 @@
     <string name="settings_show_pdf_thumbnail_pre_28_title">Show thumbnail for PDF documents</string>
     <string name="settings_show_pdf_thumbnail_pre_28_summary">Might make the app unstable on older versions of Android</string>
     <string name="settings_read_remote_files_for_thumbnail_title">Read remote files for thumbnail</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_analytics_title">Share anonymous usage counts</string>
+    <string name="settings_analytics_summary">Which features get used. Never your files, file names, or searches.</string>
+    <string name="analytics_dialog_title">Help improve this app?</string>
+    <string name="analytics_dialog_message"><![CDATA[Share anonymous usage counts, like which features get used. Never your files, file names, or searches. You can change this anytime in Settings. <a href="%1$s">Privacy policy</a>]]></string>
+    <string name="analytics_dialog_share">Share</string>
+    <string name="analytics_dialog_no">No thanks</string>
 
     <string name="about_title">About</string>
     <string name="about_version_title">Version</string>

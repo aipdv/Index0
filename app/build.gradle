@@ -25,6 +25,12 @@ android {
         versionName '0.1.0-beta.1'
         // Index0: EmbeddingGemma 2 base URL (pinned Hugging Face revision, same as Narad).
         buildConfigField 'String', 'MODEL_BASE_URL', '"https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0/"'
+        def posthogApiKey = System.getenv('POSTHOG_API_KEY') ?: ''
+        def posthogHost = System.getenv('POSTHOG_HOST') ?: ''
+        buildConfigField 'String', 'POSTHOG_API_KEY', "\"${posthogApiKey}\""
+        buildConfigField 'String', 'POSTHOG_HOST', "\"${posthogHost}\""
+        // Index0: no key means no analytics, and the Settings switch is hidden.
+        resValue 'bool', 'analytics_available', (posthogApiKey && posthogHost) ? 'true' : 'false'
         resValue 'string', 'app_version', versionName + ' (' + versionCode + ')'
         buildConfigField 'String', 'FILE_PROVIDIER_AUTHORITY', 'APPLICATION_ID + ".file_provider"'
         resValue 'string', 'app_provider_authority', applicationId + '.app_provider'
@@ -114,6 +120,9 @@ dependencies {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // Index0: opt-in analytics (PostHog EU). Pinned for repeatable builds.
+    implementation 'com.posthog:posthog-android:3.72.8'
 
     // Index0: on-device indexing and semantic search engine (from Narad).
     implementation project(':lib')

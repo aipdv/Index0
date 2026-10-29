@@ -40,8 +40,13 @@ val appInitializers = listOf(
     ::initializeCustomTheme,
     ::initializeNightMode,
     ::createNotificationChannels,
-    ::initializeIndexEngine
+    ::initializeIndexEngine,
+    ::initializeAnalytics
 )
+
+private fun initializeAnalytics() {
+    Analytics.initialize()
+}
 
 private fun initializeIndexEngine() {
     IndexEngine.initialize()

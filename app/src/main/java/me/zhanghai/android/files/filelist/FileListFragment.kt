@@ -54,6 +54,7 @@ import java8.nio.file.Paths
 import kotlin.math.roundToInt
 import kotlinx.parcelize.Parcelize
 import me.zhanghai.android.files.R
+import me.zhanghai.android.files.app.Analytics
 import me.zhanghai.android.files.app.application
 import me.zhanghai.android.files.app.clipboardManager
 import me.zhanghai.android.files.compat.checkSelfPermissionCompat
@@ -198,6 +199,9 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         super.onCreate(savedInstanceState)
 
         setHasOptionsMenu(true)
+        if (savedInstanceState == null && requireActivity().intent.action == Intent.ACTION_MAIN) {
+            Analytics.onMainLaunch()
+        }
     }
 
     override fun onCreateView(
@@ -380,6 +384,10 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         }
         if (!viewModel.isStorageAccessRequested) {
             ensureNotificationPermission()
+        }
+        if (!viewModel.isStorageAccessRequested && !viewModel.isNotificationPermissionRequested &&
+            requireActivity().intent.action == Intent.ACTION_MAIN) {
+            Analytics.maybeAsk(this)
         }
     }
 
@@ -1004,6 +1012,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
 
     override fun deleteFiles(files: FileItemSet) {
         FileJobService.delete(makePathListForJob(files), requireContext())
+        Analytics.capture("file_delete_queued", mapOf("file_count" to files.size))
         viewModel.selectFiles(files, false)
     }
 
@@ -1027,6 +1036,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         FileJobService.archive(
             makePathListForJob(files), archiveFile, format, filter, password, requireContext()
         )
+        Analytics.capture("file_archive_queued", mapOf("file_count" to files.size))
         viewModel.selectFiles(files, false)
     }
 
@@ -1181,7 +1191,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
 
     private fun pasteFiles(targetDirectory: Path) {
         val pasteState = viewModel.pasteState
-        if (viewModel.pasteState.copy) {
+        if (pasteState.copy) {
             FileJobService.copy(
                 makePathListForJob(pasteState.files), targetDirectory, requireContext()
             )
@@ -1190,6 +1200,11 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
                 makePathListForJob(pasteState.files), targetDirectory, requireContext()
             )
         }
+        val operation = if (pasteState.copy) "copy" else "move"
+        Analytics.capture(
+            "file_transfer_queued",
+            mapOf("file_count" to pasteState.files.size, "operation" to operation)
+        )
         viewModel.clearPasteState()
     }
 
@@ -1355,6 +1370,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
 
     override fun renameFile(file: FileItem, newName: String) {
         FileJobService.rename(file.path, newName, requireContext())
+        Analytics.capture("file_renamed")
         viewModel.selectFile(file, false)
     }
 
@@ -1378,6 +1394,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
         val uris = paths.map { it.fileProviderUri }
         val intent = uris.createSendStreamIntent(mimeTypes)
             .withChooser()
+        Analytics.capture("files_shared", mapOf("file_count" to paths.size))
         startActivitySafe(intent)
     }
 
@@ -1395,6 +1412,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
 
     private fun addBookmark(path: Path) {
         BookmarkDirectories.add(BookmarkDirectory(null, path))
+        Analytics.capture("bookmark_added")
         showToast(R.string.file_add_bookmark_success)
     }
 
@@ -1446,6 +1464,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
     override fun createFile(name: String) {
         val path = currentPath.resolve(name)
         FileJobService.create(path, false, requireContext())
+        Analytics.capture("file_created", mapOf("item_type" to "file"))
     }
 
     private fun showCreateDirectoryDialog() {
@@ -1455,6 +1474,7 @@ class FileListFragment : Fragment(), BreadcrumbLayout.Listener, FileListAdapter.
     override fun createDirectory(name: String) {
         val path = currentPath.resolve(name)
         FileJobService.create(path, true, requireContext())
+        Analytics.capture("file_created", mapOf("item_type" to "directory"))
     }
 
     override val currentPath: Path

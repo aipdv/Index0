@@ -82,4 +82,7 @@
     <bool name="pref_visible_show_pdf_thumbnail_pre_28">true</bool>
     <string name="pref_key_read_remote_files_for_thumbnail">key_read_remote_files_for_thumbnail</string>
     <bool name="pref_default_value_read_remote_files_for_thumbnail">true</bool>
+
+    <string name="pref_key_analytics_enabled">key_analytics_enabled</string>
+    <bool name="pref_default_value_analytics_enabled">false</bool>
 </resources>

@@ -5,6 +5,7 @@
 
 package me.zhanghai.android.files.storage
 
+import me.zhanghai.android.files.app.Analytics
 import me.zhanghai.android.files.settings.Settings
 import me.zhanghai.android.files.util.removeFirst
 import me.zhanghai.android.files.util.valueCompat
@@ -17,9 +18,22 @@ object Storages {
                 this[index] = storage
             } else {
                 this += storage
+                captureStorageAdded(storage)
             }
         }
         Settings.STORAGES.putValue(storages)
+    }
+
+    // Index0: the server type only, never a host, user name or path.
+    private fun captureStorageAdded(storage: Storage) {
+        val type = when (storage) {
+            is SmbServer -> "smb"
+            is SftpServer -> "sftp"
+            is FtpServer -> "ftp"
+            is WebDavServer -> "webdav"
+            else -> return
+        }
+        Analytics.capture("storage_added", mapOf("type" to type))
     }
 
     fun replace(storage: Storage) {
