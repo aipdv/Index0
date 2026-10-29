@@ -50,6 +50,7 @@ class IndexingFragment : PreferenceFragmentCompat() {
     private lateinit var modelPreference: Preference
     private lateinit var startPreference: Preference
     private lateinit var reindexPreference: Preference
+    private lateinit var backgroundOffPreference: Preference
     private lateinit var excludedCategory: PreferenceCategory
 
     override fun onCreatePreferencesFix(savedInstanceState: Bundle?, rootKey: String?) {
@@ -102,10 +103,23 @@ class IndexingFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, newValue ->
                 BootReceiver.setOvernightEnabled(context, newValue as Boolean)
                 Analytics.capture("overnight_indexing_toggled", mapOf("enabled" to newValue))
+                IndexPrompts.onOvernightToggled(this@IndexingFragment, newValue)
+                backgroundOffPreference.isVisible = IndexPrompts.isBackgroundOff()
                 true
             }
         }
-        listOf(statusPreference, modelPreference, startPreference, reindexPreference, overnightPreference)
+        // Shown while overnight is on and the app is not battery exempt; onResume checks again.
+        backgroundOffPreference = Preference(context).apply {
+            setTitle(R.string.indexing_background_off_title)
+            setSummary(R.string.indexing_background_off_summary)
+            isIconSpaceReserved = false
+            isVisible = false
+            setOnPreferenceClickListener { IndexPrompts.allow(this@IndexingFragment); true }
+        }
+        listOf(
+            statusPreference, modelPreference, startPreference, reindexPreference, overnightPreference,
+            backgroundOffPreference
+        )
             .forEach { statusCategory.addPreference(it) }
         // NARAD_METRICS test build only; R8 drops it from the public APK.
         if (LibBuildConfig.METRICS) {
@@ -142,6 +156,11 @@ class IndexingFragment : PreferenceFragmentCompat() {
                 launch { IndexEngine.provisioner.stateFlow.collect { bindModel(it) } }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        backgroundOffPreference.isVisible = IndexPrompts.isBackgroundOff()
     }
 
     private fun bindStatus(state: IndexingUiState, photo: PhotoModelStatus?) {
@@ -185,6 +204,8 @@ class IndexingFragment : PreferenceFragmentCompat() {
             photoOnDone == PhotoModelStatus.Missing || photoOnDone is PhotoModelStatus.Failed
         startPreference.isEnabled = !status.running
         reindexPreference.isEnabled = !status.running
+        // One dialog while files are read: the heat notice and the background ask (Indexing screen only).
+        IndexPrompts.maybeShow(this, status.stage is IndexStage.Reading)
     }
 
     private fun exportMetrics() {
