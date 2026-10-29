@@ -16,7 +16,7 @@ Video file: [art/better-files-launch.mp4](art/better-files-launch.mp4)
 
 ## Install
 
-Download the APK from [GitHub Releases](https://github.com/aipdv/Index0/releases).
+Download the APK from [GitHub Releases](https://github.com/aipdv/better-files/releases).
 
 The search model (EmbeddingGemma 2, about 320 MB) downloads once, after you accept the Gemma terms. Photo search needs one more download of about 110 MB.
 
@@ -60,7 +60,7 @@ aipdv changed the program from 2026-10-23. This list was last updated on 2026-10
 
 These additional terms under section 7 of the GPL-3.0 apply to the code that aipdv added to Material Files (the `lib/` search engine and the indexing and search code in `app/`):
 
-- 7(b): Keep the notice "Includes work from Better Files by aipdv (https://github.com/aipdv/Index0)" in the source and on the About or Licenses screen of any app that you build from this code.
+- 7(b): Keep the notice "Includes work from Better Files by aipdv (https://github.com/aipdv/better-files)" in the source and on the About or Licenses screen of any app that you build from this code.
 - 7(c): Mark modified versions as changed. Do not present them as Better Files or as made by aipdv.
 - 7(e): This license gives no rights to the aipdv trademarks above.
 
