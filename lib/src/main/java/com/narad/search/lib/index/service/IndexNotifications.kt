@@ -23,10 +23,10 @@ object IndexNotifications {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Narad Indexing",
+                "Search indexing",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows indexing progress for Narad semantic search"
+                description = "Shows search index progress"
                 setShowBadge(false)
                 // Only new channels get this; the builder flags cover phones that have the channel.
                 setSound(null, null)
@@ -58,7 +58,7 @@ object IndexNotifications {
             IndexStage.Paused -> Triple("Index paused", 0, 0)
         }
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("Narad: Building index")
+            .setContentTitle("Building search index")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_narad)
             .setOngoing(true)
