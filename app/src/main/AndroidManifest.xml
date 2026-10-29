@@ -19,11 +19,15 @@
         android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicesPolicy" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Index0: the indexing service (:lib IndexService) is a dataSync foreground service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Index0: :lib BootReceiver re-arms the overnight index job after reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
@@ -48,7 +52,8 @@
         android:allowBackup="true"
         android:banner="@drawable/banner"
         android:enableOnBackInvokedCallback="true"
-        android:fullBackupContent="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/launcher_icon"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/netework_security_config"
@@ -247,6 +252,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Index0: indexing status and settings. -->
+        <activity
+            android:name="me.zhanghai.android.files.index.IndexingActivity"
+            android:exported="false"
+            android:label="@string/indexing_title"
+            android:theme="@style/Theme.MaterialFiles" />
 
         <activity
             android:name="me.zhanghai.android.files.settings.SettingsActivity"

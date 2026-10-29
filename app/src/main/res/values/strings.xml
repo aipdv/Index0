@@ -806,4 +806,54 @@
 
     <string name="shortcut_downloads_title" translatable="false">@string/navigation_standard_directory_downloads</string>
     <string name="shortcut_ftp_server_title" translatable="false">@string/ftp_server_title</string>
+
+    <!-- Index0: indexing -->
+    <string name="indexing_title">Indexing</string>
+    <string name="navigation_indexing" translatable="false">@string/indexing_title</string>
+    <string name="indexing_status_category">Status</string>
+    <string name="indexing_status_idle">Not indexing</string>
+    <string name="indexing_status_getting_ready">Getting ready</string>
+    <string name="indexing_status_waiting_model">Waiting for the search model</string>
+    <string name="indexing_status_waiting_permission">Waiting for All files access</string>
+    <string name="indexing_status_finding">Finding %1$s</string>
+    <string name="indexing_status_reading">Reading %1$s: %2$d of %3$d</string>
+    <string name="indexing_status_done">Up to date</string>
+    <string name="indexing_status_documents_done">Documents up to date</string>
+    <string name="indexing_status_photo_model_missing">Photos need a 110 MB download</string>
+    <string name="indexing_status_photo_model_downloading">Downloading the photo model: %1$d%%</string>
+    <string name="indexing_status_photo_model_failed">Photo model download failed</string>
+    <string name="indexing_status_photo_model_failed_summary">%1$s. Tap to try again.</string>
+    <string name="indexing_status_photos_deferred">Photos will be indexed when the phone has free memory, usually overnight.</string>
+    <!-- Metrics test build only (NARAD_METRICS=1), never in the public APK. -->
+    <string name="indexing_export_metrics_title" translatable="false">Export metrics</string>
+    <string name="indexing_export_metrics_summary" translatable="false">Share one file with every indexing run on this phone</string>
+    <string name="indexing_export_metrics_failed" translatable="false">Could not export metrics</string>
+    <string name="indexing_status_failed">Indexing stopped: %1$s</string>
+    <string name="indexing_status_paused">Paused, resumes when the phone is idle</string>
+    <string name="indexing_counts">%1$d documents, %2$d photos</string>
+    <string name="indexing_counts_last_run">%1$d documents, %2$d photos. Last run %3$s</string>
+    <string name="indexing_model_title">Search model</string>
+    <string name="indexing_model_not_downloaded">Download about 320 MB once to search by meaning. Everything stays on this phone. Uses the Gemma Terms of Use.</string>
+    <string name="indexing_model_downloading">Downloading %1$d%%</string>
+    <string name="indexing_model_verifying">Checking the download</string>
+    <string name="indexing_model_ready">Ready. Search runs on this phone.</string>
+    <string name="indexing_model_failed">Download failed: %1$s. Tap to try again.</string>
+    <string name="indexing_download_failed_connection">Check your connection</string>
+    <string name="indexing_terms_title">Download the search model?</string>
+    <string name="indexing_terms_message">Index0 downloads EmbeddingGemma from Hugging Face, about 320 MB, once. Your files never leave this phone. The model is provided under the Gemma Terms of Use.</string>
+    <string name="indexing_terms_link">Gemma Terms of Use</string>
+    <string name="indexing_terms_accept">Accept and download</string>
+    <string name="indexing_start_title">Index now</string>
+    <string name="indexing_start_summary">Reads new and changed files</string>
+    <string name="indexing_start_needs_model">Download the search model first</string>
+    <string name="indexing_start_needs_access">Grant All files access first</string>
+    <string name="indexing_reindex_title">Rebuild index</string>
+    <string name="indexing_reindex_summary">Deletes the index and reads every file again</string>
+    <string name="indexing_overnight_title">Overnight indexing</string>
+    <string name="indexing_overnight_summary">Catch up while the phone is idle and the battery is not low</string>
+    <string name="indexing_excluded_category">Do not index</string>
+    <string name="indexing_excluded_defaults">The Android folder (except Android/media) and hidden folders are always skipped. Scanned PDFs and password-protected PDFs are not searchable yet.</string>
+    <string name="indexing_excluded_add">Add folder</string>
+    <string name="indexing_excluded_remove_title">Index this folder again?</string>
+    <string name="indexing_excluded_remove">Index again</string>
 </resources>

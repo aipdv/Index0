@@ -31,16 +31,28 @@ android {
     ndkVersion '30.0.16248370'
     defaultConfig {
         applicationId 'me.zhanghai.android.files'
-        minSdk 23
+        // Index0: the Narad engine (:lib) needs Android 10+ (API 29).
+        minSdk 29
         // Not supporting the ACCESS_LOCAL_NETWORK runtime permission yet.
         //noinspection OldTargetApi
         targetSdk 36
         versionCode 40
         versionName '1.7.5'
+        // Index0: EmbeddingGemma 2 base URL (pinned Hugging Face revision, same as Narad).
+        buildConfigField 'String', 'MODEL_BASE_URL', '"https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0/"'
         resValue 'string', 'app_version', versionName + ' (' + versionCode + ')'
         buildConfigField 'String', 'FILE_PROVIDIER_AUTHORITY', 'APPLICATION_ID + ".file_provider"'
         resValue 'string', 'app_provider_authority', applicationId + '.app_provider'
         resValue 'string', 'file_provider_authority', applicationId + '.file_provider'
+        // Index0: NARAD_METRICS=1 marks the metrics test build in About and in the APK badging.
+        if (System.getenv('NARAD_METRICS') == '1') {
+            versionName versionName + '-metrics'
+            resValue 'string', 'app_version', versionName + ' (' + versionCode + ')'
+        }
+        // Index0: ONNX Runtime and the tokenizer ship only these ABIs in :lib.
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
         externalNativeBuild {
             cmake {
                 arguments '-DANDROID_STL=none'
@@ -123,6 +135,10 @@ dependencies {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
+    // Index0: on-device indexing and semantic search engine (from Narad).
+    implementation project(':lib')
+    implementation 'androidx.work:work-runtime-ktx:2.10.5'
+
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // kotlinx-coroutines-android depends on kotlin-stdlib-jdk8
@@ -130,6 +146,9 @@ dependencies {
     def kotlinx_coroutines_version = '1.11.0'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinx_coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version"
+    // Index0: JVM unit tests for the index glue.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinx_coroutines_version"
 
     implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'androidx.appcompat:appcompat:1.8.0'

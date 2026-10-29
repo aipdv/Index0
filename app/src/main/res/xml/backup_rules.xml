@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Index0: full-backup rules (API 29-30, android:fullBackupContent).
+    Keeps the search index (it holds extracted document text), the downloaded models and the
+    engine flags out of Auto Backup. Material Files' own settings stay in backup.
+    API 31+ uses data_extraction_rules.xml.
+-->
+<full-backup-content>
+    <exclude domain="database" path="narad_index.db" />
+    <exclude domain="database" path="narad_index.db-wal" />
+    <exclude domain="database" path="narad_index.db-shm" />
+    <exclude domain="database" path="narad_index.db-journal" />
+    <exclude domain="file" path="models/" />
+    <exclude domain="sharedpref" path="narad_lib_prefs.xml" />
+    <exclude domain="sharedpref" path="index0_prefs.xml" />
+</full-backup-content>

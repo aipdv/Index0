@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Test-only manifest override for the :lib androidTest APK.
+
+    Purpose: allow cleartext HTTP traffic to localhost for MockWebServer
+    (used by ModelProvisionerTest and RealProvisionEndToEndTest).
+
+    Also declares storage permissions needed by ImageIndexingTest and
+    MediaStoreEnumerationTest so those tests can exercise Branch B of IndexWorker
+    (the MediaStore enumeration path) without hitting WaitingForPermission.
+
+    This manifest is merged into the test APK only - NOT into any release build.
+    The network_security_config_test.xml permits cleartext to 127.0.0.1/localhost.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Storage permissions for image/media tests (ImageIndexingTest, MediaStoreEnumerationTest). -->
+    <!-- READ_MEDIA_IMAGES / READ_MEDIA_VIDEO are the API 33+ scoped-storage replacements. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- READ_EXTERNAL_STORAGE covers API < 33; maxSdkVersion=32 avoids lint warning on 33+. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- MANAGE_EXTERNAL_STORAGE: required for isDocumentAccessGranted() on API 30+. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <application
+        android:networkSecurityConfig="@xml/network_security_config_test"
+        tools:replace="android:networkSecurityConfig" />
+
+</manifest>
