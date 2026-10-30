@@ -2,7 +2,7 @@
 
 A file manager for Android with meaning search. Find documents and photos by what is in them, not only by their name. Search runs on your phone.
 
-https://github.com/user-attachments/assets/76e32c15-605b-4775-8aef-b26f3df61d16
+https://github.com/user-attachments/assets/8335bdb1-b10c-4eaa-b37f-a02c0098842a
 
 Video file: [art/better-files-launch.mp4](art/better-files-launch.mp4)
 
